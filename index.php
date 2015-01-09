@@ -1076,7 +1076,7 @@ register_shutdown_function(function() {
 	if ($errors) {
 		file_put_contents(__DIR__.'/errors.log',
 				date('Y-m-d H:i:s').implode(PHP_EOL, $errors), FILE_APPEND);
-		echo '<p>', implode('<br>', $errors), '</p>';
+// 		echo '<p>', implode('<br>', $errors), '</p>';
 	}
 });
 
