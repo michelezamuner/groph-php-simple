@@ -931,7 +931,7 @@ function getSearchResults() {
 			? $matchingRes
 			: array_intersect($intersect, $matchingRes);
 	}
-	foreach ($intersect as $resId)
+	foreach (array_unique($intersect) as $resId)
 		$results[] = $resCollection->find($resId);
 	if (empty($searchTerms))
 		$results = $resCollection->findLike(array(''));
