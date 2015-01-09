@@ -1157,13 +1157,15 @@ try {
 	
 	if (isset($_POST['tag:add'])) {
 		$newTagName = $_POST['tag:add:name'];
-		$tagGroups = explode(',', preg_replace('/\s+,\s+/', ',',
-				$_POST['tag:add:parents']));
+		$tagGroupsString = preg_replace('/\s+,\s+/', ',', $_POST['tag:add:parents']);
+		$tagGroups = empty($tagGroupsString) ? array() : explode(',', $tagGroupsString);
 		foreach ($tagGroups as $group) {
 			$tagsNames = array_merge(array_reverse(explode(':', $group)),
 				array($newTagName));
 			getTagWithDescendants($tagsNames);
 		}
+		if (empty($tagGroups))
+			$tagFactory->create(array($newTagName))->save();
 	}
 	
 	if (isset($_POST['tag:edit']) && $selectedTag) {
