@@ -774,6 +774,14 @@ class Resource extends Model
 
 class ModelArray extends ArrayObject
 {
+	public function toArray()
+	{
+		$array = array();
+		foreach ($this as $model)
+			$array[] = (string)$model;
+		return $array;
+	}
+	
 	public function map($callback)
 	{
 		return new self(array_map($callback), $this->getArrayCopy());
@@ -1032,7 +1040,7 @@ function export($file) {
 	$resources = array();
 	foreach ($resCollection->findLike(array('')) as $res)
 		$resources[$res->getLink()] = array($res->getTitle(),
-				(array)$res->getTags());
+				$res->getTags()->toArray());
 	file_put_contents($file, prettifyJson(json_encode(array(
 		'tags' => $tags, 'resources' => $resources
 	))));
