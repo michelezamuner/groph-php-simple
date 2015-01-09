@@ -1085,8 +1085,10 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 });
 
 try {
+	$configuration = include('configuration.php');
 	$logger = new Logger('groph.log');
-	$database = new Database('groph.sqlite', $logger);
+// 	$database = new Database('groph.sqlite', $logger);
+	$database = new Database($configuration['db'], $logger);
 	$export = false;
 	$import = false;
 	if (isset($_POST['manage:import'])) {
