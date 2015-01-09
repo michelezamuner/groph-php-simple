@@ -1,4 +1,4 @@
 <?php
 return array(
-	'db' => 'groph.sqlite'
+	'db' => 'groph-noparents.sqlite'
 );
