@@ -1,0 +1,329 @@
+- risorsa: link + tags
+- relazioni tra tag: tag1 -> tag2 = una risorsa tag1 è anche tag2
+
+- combinazioni di tag più usate, per semplificare l'applicazione di tag alle nuove risorse, ed evitare di dimenticarsi tag
+- ricerca per tag, con la possibilità di escludere tag
+
+- una nuova tag viene inserita quando compare per la prima volta
+- suggerimento tag esistenti all'inserimento
+- una tag viene eliminata quando non compare più su nessuna risorsa
+- visualizzazione gerarchica delle tag, con le tag più generiche in evidenza, dalle quali si può passare alle sottotag, ecc.
+- mentre inserisco una risorsa ho bisogno di avere sott'occhio i gruppi di tag più usati, per essere coerente
+
+- le operazioni più comuni sono navigare le tag, cercare tra le tag, visualizzare risorse aventi certe tag, e aggiungere risorse
+
+Sulle relazioni tra tag
+Nella visualizzazione delle relazioni tra le tag, per avere una migliore classificazione, sarebbe meglio ripetere la gerarchia dei genitori di una tag ad ogni livello in cui compare. Ad esempio, supponiamo di avere la tag Angular JS. Questa ha le seguenti relazioni:
+- angularjs -> framework
+- angularjs -> spa -> javascript
+- angularjs -> spa -> web
+La rappresentazione più semplice possibile di queste tag sarebbe la seguente:
+- framework
+ - angularjs
+- javascript
+ - spa
+  - angularjs
+- web
+ - spa
+  - angularjs
+Tuttavia, quando uno entra nella tag JavaScript, si ritrova la tag Single Page Applications non constestualizzata, allo stesso livello di altre tag che magari riguardano Node JS. Sarebbe più chiaro se Single Page Applications fosse contenuta almeno dentro una ulteriore tag Web, per distinguerla dalle molte altre applicazioni di JavaScript. Allora, dovendo inserire Single Page Applications dentro JavaScript, replichiamo anche la gerarchia di Single Page Applications, ottenendo:
+- javascript
+ - web
+  - spa
+   - angularjs
+Analogamente, dovendo inserire Angular JS dentro Single Page Applications, replichiamo la gerarchia di Angular JS, ottenendo:
+- javascript
+ - web
+  - spa
+   - framework
+    - angularjs
+Naturalmente, questo tipo di visualizzazione abbandona la regola che impone la relazione di appartenenza, perché Web non appartiene a JavaScript. Tuttavia, il significato di questa operazione è il seguente: tra le varie applicazioni di JavaScript ce ne sono alcune in ambito Web. E allo stesso modo: tra le varie Single Page Applications ce ne sono alcune basate su Framework. Ora, sorge una situazione strana, perché le tag tra loro indipendenti, come Web e Framework, possono essere incluse l'una nell'altra in qualunque ordine, proprio in virtù della loro indipendenza. Ad esempio:
+- javascript
+ - web
+  - framework
+- javascript
+ - framework
+  - web
+- framework
+ - javascript
+  - web
+- framework
+ - web
+  - javascript
+- web
+ - framework
+  - javascript
+- web
+ - javascript
+  - framework
+Tutte queste varianti hanno un senso in un'ottica di navigazione. E tuttavia non è accettabile che siano esplose tutte le possibili combinazioni tra tag indipendenti. E' inevitabile che debba intervenire un'autorità che decida autoritativamente qual'è la gerarchia con la quale visualizzare le tag. Questo esercizio di autorità si potrebbe realizzare tramite l'applicazione di priorità alle tag. Ad esempio, se io decido che Web ha una priorità maggiore di JavaScript, allora Web comparirà sempre prima di JavaScript, e i casi si ridurrebbero a:
+- framework
+ - web
+  - javascript
+- web
+ - framework
+  - javascript
+- web
+ - javascript
+  - framework
+Dopodiché si potrebbe stabilire che Web ha priorità maggiore di Framework, per cui:
+- web
+ - framework
+  - javascript
+- web
+ - javascript
+  - framework
+E a questo punto si potrebbe anche decidere di lasciare disponibili entrambi i percorsi, per consentire di arrivare alle risorse da più strade diverse, senza però avere un'esplosione incontrollabile. Facciamo un esempio:
+
+framework	1
+ angularjs
+spa		2
+ angularjs
+javascript	3
+ spa
+web		4
+ spa
+----\\----
+framework	javascript, web, spa, 1
+javascript	framework, web, 3, 2
+web		framework, javascript, 4, 2
+spa		framework, 3, 4, 2
+angularjs	1, 3, 4, 2
+
+framework
+ javascript
+  web
+   spa
+    angularjs
+
+(a,e)	1	(e,a)
+(d,e)	2	(e,d)
+(b,d)	3	(d,b)
+(c,d)	4	(d,c)
+
+(b,e) 3+2	(e,b)
+(c,e) 4+2	(e,c)
+
+getCombinations elements
+ combinations = []
+ foreach getHeads elements as [h1, h2]
+  if not wrong [h1,h2]
+   tail = getTail [h1,h2] elements
+   combinations ++ empty tail
+    ? [h1,h2]
+    : combine h1, getCombinations [h2, tail]
+ return combinations
+ 
+# aggiungere cache
+# prima di combinare il risultato di getCombinations, verificare che non sia già presente
+
+getCombinations abcde
+ heads		[ab ac ad ae ba bc bd be ca cb cd ce da db dc de ea eb ec ed]
+ [h1,h2]		ab	->	ok
+  tail			cde
+  getCombinations bcde
+   heads	[bc bd be cb cd ce db dc de eb ec ed]
+   [h1,h2]		bc	->	ok
+    tail		de
+    getCombinations cde
+      heads	[cd ce dc de ec ed]
+      [h1,h2]		cd	->	ok
+       tail		e
+       getCombinations de
+        heads	[de ed]
+         [h1,h2]	de	->	ok
+          tail	[]
+          combinations		[]++[de]=[de]
+         [h1,h2]	ed	->	NO
+        RETURN [de]
+       combinations	 	[]++combine c, [de]=[cde]
+      [h1,h2]		ce	->	ok
+       tail		d
+       getCombinations ed	->	CACHED {de} => [de]
+       combinations		[cde]++combine c, [de]=[cde]
+      [h1,h2]		dc	->	NO
+      [h1,h2]		de	->	ok
+       tail		c
+       getCombinations ec
+        heads	[ec ce]
+         [h1,h2]	ec	->	NO
+         [h1,h2]	ce	->	ok
+          tail		[]
+          combinations		[]+[ce]=[ce]
+        RETURN [ce]
+       combinations		[cde]++combine d, [ce]=[cde,dce] # NOOO! SBAGLIATO!!!
+ 
+ 
+ 
+# al punto in cui viene trovato [cde], se (c,e) fosse sbagliato, l'errore non verrebbe trovato
+# se la combinazione iniziale è costruita sulla base delle regole, evitare che l'algoritmo perda tempo a riscoprire la combinazione che sappiamo già essere corretta?
+# cachare combinazioni già valutate
+
+
+================================//===================================
+abcde
+
+perm elements
+ if count elements === 1 return elements
+ permutations = []
+ foreach elements as element
+  tail = elements without element
+  permutations += combine element, perm tail
+ return permutations
+  
+perm abcde
+ element	a
+  perm bcde
+   element	b
+    perm cde
+     element	c
+      perm de
+       element	d
+        permutations	[]+combine d, [e] = [de]
+       element	e
+        permutations	[de]+combine e, [d] = [de,ed]
+       RETURN [de,ed]
+      permutations	[]+combine c, [de,ed] = [cde,ced]
+     element	d
+      perm ce
+       element	c
+        permutations	[]+combine c, [e] = [ce]
+       element e
+        permutations	[ce]+combine e, [c] = [ce,ec]
+       RETURN [ce,ec]
+      permutations	[cde,ced]+combine d, [ce,ec] = [cde,ced,dce,dec]
+      
+      
+- per ogni elemento (a, b, c, d, e) aggiungere uno dei rimanenti:
+ ab, ac, ad, ae
+ ba, bc, bd, be
+ ca, cb, cd, ce
+ da, db, dc, de
+ ea, eb, ec, ed
+- ogni volta che si aggiunge un elemento, si controlla se va contro una regola (eventualmente le regole si possono indicizzare). In questo modo rimaniamo con:
+ ab, ac, ad, ae
+ ba, bc, bd, be
+ ca, cb, cd, ce
+ da,         de
+- ripetiamo l'operazione: per ciascuna di queste teste, si aggiunge un elemento preso dalla coda:
+ abc, abd, abe, acb, acd, ace, adb, adc, ade, aeb, aec, aed
+ bac, bad, bae, bca, bcd, bce, bda, bdc, bde, bea, bec, bed
+ cab, cad, cae, cba, cbd, cbe, cda, cdb, cde, cea, ceb, ced
+ dab, dac, dae, dea, deb, dec
+- quando aggiungo un elemento, cerco tra le regole che hanno quell'elemento in seconda posizione (tramite un indice), e cerco se l'elemento in prima posizione compare nella testa. Ad esempio, supponiamo che la testa sia AB, e che io voglia aggiungere C. Le regole che hanno C in seconda posizione sono DC e EC, quindi mi chiedo se D o E compaiono nella testa AB. Siccome non compaiono, ABC è una combinazione accettabile. Per quanto riguarda le regole che hanno C in prima posizione, di queste non posso dire nulla, perché non so ancora che altri elementi compariranno successivamente a C, visto che non sono ancora comparsi. Ad esempio, se ci fosse una regola CE, io non potrei ancora escludere la permutazione corrente, perché non so ancora se uscirà E. Da un lato, io posso sempre fidarmi del fatto che in futuro, se uscirà E, io riapplicherò questo controllo (E in seconda posizione), e scoprirò che CE non è accettabile. Tuttavia, c'è ancora un'ottimizzazione che si può fare: siccome la testa è AB, e ora sto inserendo C, allora sicuramente E comparirà in seguito (perché comunque tutti gli elementi devono comparire), allora sicuramente la combinazione che stiamo costruendo in questo momento sarà inaccettabile, perché finirà sicuramente per contenere CE. Formalizzando, questo secondo controllo consiste nel prendere tutte le regole che hanno C in prima posizione (tramite un indice), e cercare se il primo elemento compare nella coda (il complementare della testa escluso l'elemento corrente).
+ head: ab, current: c, tail: de, rulesI: [dc,ec] -> ok, rulesII: [] -> ok
+ head: ab, current: d, tail: ce, rulesI: [ed] -> ok, rulesII: [db,dc] -> NO (dc)
+ head: ab, current: e, tail: cd, rulesI: [] -> ok, rulesII: [ea,ed,eb,ec] -> NO (ec,ed)
+ head: ac, current: b, tail: de, rulesI: [db,eb] -> ok, rulesII: [] -> ok
+ head: ac, current: d, tail: be, rulesI: [ed] -> ok, rulesII: [db, dc] -> NO (db)
+ head: ac, current: e, tail: bd, rulesI: [] -> ok, rulesII: [ea,eb,ec,ed] -> NO (eb,ed)
+ head: ad, current: b, tail: ce, rulesI: [db,eb] -> NO (db)
+ head: ad, current: c, tail: be, rulesI: [dc,ec] -> NO (dc)
+ head: ad, current: e, tail: bc, rulesI: [] -> ok, rulesII: [ea,eb,ec,ed] -> NO (eb,ec)
+ head: ae, current: b, tail: cd, rulesI: [db,eb] -> NO (eb)
+ head: ae, current: c, tail: bd, rulesI: [dc,ec] -> NO (ec)
+ head: ae, current: d, tail: bc, rulesI: [ed] -> NO (ed)
+- Tra quelle che cominciano con A rimangono soltanto:
+ abc, acb
+- Proseguiamo con la stessa tecnica:
+ head: abc, current: d, tail: e, rulesI: [ed] -> ok, rulesII: [db,dc] -> ok
+ head: abc, current: e, tail: d, rulesI: [] -> ok, rulesII: [ea,eb,ec,ed] -> NO (ed)
+ head: acb, current: d, tail: e, rulesI: [ed] -> ok, rulesII: [db,dc] -> ok
+ head: acb, current: e, tail: d, rulesI: [] -> ok, rulesII: [ea,eb,ec,ed] -> NO (ed)
+- Abbiamo ottenuto:
+ abcd, acbd
+- A questo punto io so già in entrambi i casi quale carattere resta, perché è uno solo. E però io ho già fatto il controllo delle regole sulle combinazioni comprendenti quel carattere, in particolare durante il secondo controllo del passo precedente (rulesII). Dunque basta aggiungere a ciascuna il suo carattere mancante, e si sono ottenute due combinazioni valide:
+ abcde, acbde
+ 
+ 
+Algoritmo per trovare se una sequenza rompe una regola
+abcde
+a -> nessuna regola
+b -> nessuna regola
+c -> nessuna regola
+d -> (db, dc)
+ b -> non compreso in [e]
+ c -> non compreso in [e]
+ 
+adebc
+a -> nessuna regola
+d -> (db, dc)
+ -> b compreso in (ebc) KO!!
+ 
+ 
+=======================//=========================
+http://cuppster.com/2011/05/12/diy-node-js-server-on-amazon-ec2/
+ Web Servers, Node JS, Software Performance, Software Architecture
+ 
+Web Servers -> Web, Computer Networks				0 => [1, 2]
+Computer Networks -> System Administration			2 => [13]
+Web -> Software Applications					1 => [14]
+Software Applications -> Software Development			14 => [9]
+Node JS -> JavaScript, Asynchronous Event-Driven Programming	3 => [4, 5]
+JavaScript -> Interpreted Programming Languages			4 => [6]
+Interpreted Programming Languages -> Programming Languages	6 => [7]
+Asynchronous Event-Driven Programming -> Programming Paradigms	5 => [8]
+Programming Paradigms -> Software Development			8 => [9]
+Programming Languages -> Software Development			7 => [9]
+Software Performance -> Software Quality Assurance		10 => [11]
+Software Architecture -> Software Development			12 => [9]
+Software Quality Assurance -> Software Development		11 => [9]
+
+Software Development						9
+ Programming Languages						7
+  Interpreted Programming Languages				6
+   JavaScript							4
+    Node JS							3
+ Programming Paradigms						8
+  Asynchronous Event-Driven Programming				5
+   Node JS							3
+ Software Applications						14
+  Web								1
+   Web Servers							0
+ Software Architecture						12
+ Software Quality Assurance					11
+  Software Performance						10
+System Administration						13
+ Computer Networks						2
+  Web Servers							0
+  
+1 - array di padri->figli dalla tabella parents
+1b - merge dei padri con lo stesso nome (si può fare automaticamente perché il padre è la chiave)
+2 - trovo le foglie (figli che non sono padri), per ogni foglia, cerco se il padre è figlio di altri nodi: in quel caso aggiungo la foglia all'albero che parte da quei nodi, ed elimino la foglia e il padre corrente
+ 
+ 
+- inserisco il link nel campo link
+- digito Web Server nel campo tag, siccome è una nuova tag, non ottengo alcun suggerimento. Continuo digitando tutte le tag separate da virgola. Le nuove tag vengono aggiunte, inizialmente figlie di nessuno.
+- per aggiungere un parent ad una tag, scrivo la tag in un campo, il parent nell'altro, e clicco Add Parent.
+- per rimuovere un parent da una tag, scrivo la tag in un campo, il parent nell'altro, e clicco Remove Parent.
+
+
+Nodes
+ Node[] items
+
+Node
+ Id id
+ Node[] parents
+ Node[] children
+
+Nodes Node::search(Id)
+void Node::addChild(Node)
+
+$webServers = Node::create('Web Servers');
+$web = Node::create('Web');
+$computerNetworks = Node::create('Computer Networks');
+$web->addChild($webServers);
+$computerNetworks->addChild($webServers);
+$systemAdministration = Node::create('System Administration');
+$systemAdministration->addChild($computerNetworks);
+$softwareApplications = Node::create('Software Applications');
+$softwareApplications->addChild($web);
+$softwareDevelopment = Node::create('Software Development');
+$softwareDevelopment->addChild($softwareApplications);
+$nodeJS = Node::create('Node JS');
+$javaScript = Node::create('JavaScript');
+$asynchronousEventDrivenProgramming = Node::create('Asynchronous Event-Driven Programming');
+$javaScript->addChild($nodeJS);
+$asynchronousEventDrivenProgramming->addChild($nodeJS);
+$interpretedProgrammingLanguages = Node::create('Interpreted Programming Languages');
+$interpretedProgrammingLanguages->addChild($javaScript);
