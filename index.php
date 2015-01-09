@@ -394,7 +394,8 @@ class TagCollection extends ModelCollection
 	
 	public function unIndexParent(Tag $child, Tag $parent)
 	{
-		unset($this->parentsIndex[$child->getId()][$parent->getId()]);
+		$index = array_search($parent->getId(), $this->parentsIndex[$child->getId()]);
+		unset($this->parentsIndex[$child->getId()][$index]);
 	}
 	
 	public function getIndexParents(Tag $child)
@@ -405,6 +406,11 @@ class TagCollection extends ModelCollection
 				return $self->find($id);
 			}, $this->parentsIndex[$child->getId()])
 			: array();
+	}
+	
+	public function getParentsIndex()
+	{
+		return $this->parentsIndex;
 	}
 }
 
@@ -1191,6 +1197,11 @@ try {
 			if (!$tag) {
 				$selectedTagObject->setName($newName)->save();
 			}
+			// La tag trovata potrebbe essere la stessa selected tag
+			// nel caso in cui uno abbia cambiato il case del nome
+			else if ($tag->getId() === $selectedTagObject->getId()) {
+				$tag->setName($newName)->save();
+			}
 			// Altrimenti, bisogna spostare tutti i child e le risorse
 			// della tag corrente nell'altra, ed eliminare la tag corrente
 			else {
@@ -1218,6 +1229,7 @@ try {
 		$parentsNames = empty($parentsNames)
 				? array() : explode(',', $parentsNames);
 		
+		// Rimuovi i parent che non sono più nella lista di parents
 		foreach ($realParents as $parentName) {
 			if (!in_array($parentName, $parentsNames)) {
 				$parent = $tagCollection->findByName($parentName);
@@ -1242,6 +1254,11 @@ try {
 					->save();
 			}
 		}
+		
+		// Aggiorno $searchParents
+		$searchParents = implode(',', array_map(function(Tag $tag) {
+			return $tag->getName();
+		}, $selectedTagObject->getParents()));
 	}
 	
 	if (isset($_POST['res:delete']) && $selectedRes) {
