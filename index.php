@@ -254,7 +254,6 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 
 try {
 	$conf = include('configuration.php');
-	$state = State::create($conf);
 	$logger = new Logger('groph.log');
 	$database = new Database($conf->get('db'), $logger);
 	$tagFactory = new Tag\Factory($database, $logger);
@@ -262,17 +261,10 @@ try {
 	$tagCollection = $tagFactory->getCollection();
 	$resCollection = $resFactory->getCollection();
 	$tagFactory->addListener($resCollection);
+	$state = State\State::create();
 	
-	// Manages POST submits
 	switch ($state->getPost()) {
-		case $conf->get('actions/manage/post/import'):
-			move_uploaded_file(
-					$_FILES[$conf->get('actions/manage/file')]['tmp_name'],
-					'groph.json');
-			$database->reset();
-			import('groph.json');
-			break;
-		case $conf->get('actions/manage/post/export'):
+		case $state->getExport():
 			export('groph.json');
 			header('Content-Description: File Transfer');
 			header('Content-Type: application/octet-stream');
@@ -284,7 +276,14 @@ try {
 			readfile('groph.json');
 			exit();
 			break;
+		case $state->getImport():
+			$param = $state->getImport()->getParam('file')->getName();
+			move_uploaded_file($_FILES[$param]['tmp_name'], 'groph.json');
+			$database->reset();
+			import('groph.json');
+			break;
 		default:
+			break;
 	}
 
 	if (isset($_POST['tag:delete'])) {
@@ -294,7 +293,6 @@ try {
 	
 	$location = new Location();
 	$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-// 	$searchQuery = isset($_GET['search']) ? trim($_GET['search:query']) : '';
 	$selectedRes =  isset($_GET['res'])
 		? $resCollection->find($_GET['res']) : null;
 	
@@ -439,16 +437,6 @@ try {
 	if (isset($_GET['ajax'])) exit('success');
 	
 	$searchResults = getSearchResults();
-	
-	/**
-	 * @var Vector|Null $f Form input names.
-	 * 
-	 *  For each form, input names are taken from
-	 *  $conf['actions'] and saved inside
-	 *  this variable to be easily fetched and
-	 *  printed inside the form's HTML.
-	 */
-	$f = Null;
 ?>
 <!doctype html>
 <html lang="en">
@@ -551,19 +539,17 @@ try {
 	</head>
 	<body>
 		<form id="manage" method="POST" enctype="multipart/form-data">
-			<?php $f = $conf->get('actions/manage'); ?>
-			<input type="submit" name="<?php echo $f->get('post/export'); ?>" value="Export">
+			<input type="submit" name="<?php echo $state->getExport(); ?>" value="Export">
 			<label>File</label>
-			<input type="file" name="<?php echo $f->get('file'); ?>">
-			<input type="submit" name="<?php echo $f->get('post/import'); ?>" value="Import">
+			<input type="file" name="<?php echo $state->getImport()->getParam('file')->getName(); ?>">
+			<input type="submit" name="<?php echo $state->getImport(); ?>" value="Import">
 		</form>
 		<form id="search">
-			<?php $f = $conf->get('actions/search'); ?>
 			<fieldset>
 				<legend>Search Resources</legend>
-				<input type="text" name="<?php echo $f->get('query'); ?>"
+				<input type="text" name="<?php echo $state->getSearch()->getParam('query')->getName(); ?>"
 						value="<?php echo $state->getSearchQuery(); ?>">
-				<input type="submit" name="<?php echo $f->get('search'); ?>" value="Search">
+				<input type="submit" name="<?php echo $state->getSearch(); ?>" value="Search">
 			</fieldset>
 		</form>
 		<form id="add" method="POST">
