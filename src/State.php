@@ -8,6 +8,7 @@ class State
 	
 	private $conf = NULL;
 	private $posts = NULL;
+	private $searchQuery = NULL;
 	
 	public function __construct(Vector $configuration)
 	{
@@ -17,6 +18,10 @@ class State
 		foreach ($this->conf['actions'] as $action)
 			if (isset($action['post']))
 				$this->posts->merge($action['post']);
+
+		$searchQuery = $this->conf->get('actions/search/query');
+		$this->searchQuery = isset($_GET[$searchQuery])
+			? trim($_GET[$searchQuery]) : '';
 	}
 	
 	public function getPost()
@@ -31,5 +36,10 @@ class State
 	public function getSelectedTag()
 	{
 		
+	}
+	
+	public function getSearchQuery()
+	{
+		return $this->searchQuery;
 	}
 }

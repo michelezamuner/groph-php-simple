@@ -2,14 +2,15 @@
 include 'vendor/autoload.php';
 
 function getTagLinks(Tag\Tag $tag) {
-	global $path, $searchQuery, $selectedTag;
+	global $state;
+	global $path, /*$searchQuery, */$selectedTag;
 	$tagLink = $path.'?'.(empty($selectedTag) ? ''
 						: 'tag='.urlencode($selectedTag).'&').
 						urlencode('search:query').'='.
 						urlencode('"tag:'.$tag->getName().'"').
 						'&search=Search';
-	$editLink = $path.'?'.(empty($searchQuery) ? ''
-						: urlencode('search:query').'='.urlencode($searchQuery).
+	$editLink = $path.'?'.(!$state->getSearchQuery() ? ''
+						: urlencode('search:query').'='.urlencode($state->getSearchQuery()).
 						'&search=Search&').'tag='.urlencode($tag->getName()).'&focus=tag';
 	return '<a href="'.$tagLink.'">'.$tag->getName().'</a> <a href="'.
 			$editLink.'">edit</a>';
@@ -29,16 +30,17 @@ function getTreeView(Array $roots, $ind) {
 }
 
 function getSearchResults() {
-	global $tagCollection, $resCollection, $searchQuery;
+	global $state;
+	global $tagCollection, $resCollection/*, $searchQuery*/;
 	$results = array();
 	$searchTerms = array();
-	if (!empty($searchQuery)) {
+	if ($state->getSearchQuery()) {
 		// Prima trovo tutte le stringhe tra virgolette
-		preg_match_all('/"([^"]+)"/', $searchQuery, $matches);
+		preg_match_all('/"([^"]+)"/', $state->getSearchQuery(), $matches);
 		$searchTerms = array_merge($searchTerms, $matches[1]);
 		// Poi prendo tutto quello che non è tra virgolette,
 		// lo suddivido per spazi bianchi, e lo aggiungo
-		$remainder = $searchQuery;
+		$remainder = $state->getSearchQuery();
 		foreach ($matches[1] as $match)
 			$remainder = trim(str_replace("\"$match\"", '', $remainder));
 		$remainder = empty($remainder) ? array() : explode(' ', $remainder);
@@ -285,19 +287,6 @@ try {
 		default:
 	}
 
-// 	if (isset($_POST['manage:export'])) {
-// 		export('groph.json');
-// 		header('Content-Description: File Transfer');
-// 		header('Content-Type: application/octet-stream');
-// 		header('Content-Disposition: attachment; filename=groph.json');
-// 		header('Expires: 0');
-// 		header('Cache-Control: must-revalidate');
-// 		header('Pragma: public');
-// 		header('Content-Length: ' . filesize('groph.json'));
-// 		readfile('groph.json');
-// 		exit();
-// 	}
-
 	if (isset($_POST['tag:delete'])) {
 		$tag = $tagCollection->findByName($_GET['tag'])->delete();
 		if ($tag) $tag->delete();
@@ -305,7 +294,7 @@ try {
 	
 	$location = new Location();
 	$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-	$searchQuery = isset($_GET['search']) ? trim($_GET['search:query']) : '';
+// 	$searchQuery = isset($_GET['search']) ? trim($_GET['search:query']) : '';
 	$selectedRes =  isset($_GET['res'])
 		? $resCollection->find($_GET['res']) : null;
 	
@@ -561,18 +550,20 @@ try {
 		</script>
 	</head>
 	<body>
-		<?php $f = $conf->get('actions/manage'); ?>
 		<form id="manage" method="POST" enctype="multipart/form-data">
+			<?php $f = $conf->get('actions/manage'); ?>
 			<input type="submit" name="<?php echo $f->get('post/export'); ?>" value="Export">
 			<label>File</label>
 			<input type="file" name="<?php echo $f->get('file'); ?>">
 			<input type="submit" name="<?php echo $f->get('post/import'); ?>" value="Import">
 		</form>
 		<form id="search">
+			<?php $f = $conf->get('actions/search'); ?>
 			<fieldset>
 				<legend>Search Resources</legend>
-				<input type="text" name="search:query" value="<?php echo $searchQuery ?>">
-				<input type="submit" name="search" value="Search">
+				<input type="text" name="<?php echo $f->get('query'); ?>"
+						value="<?php echo $state->getSearchQuery(); ?>">
+				<input type="submit" name="<?php echo $f->get('search'); ?>" value="Search">
 			</fieldset>
 		</form>
 		<form id="add" method="POST">
@@ -634,7 +625,7 @@ try {
 		<dl id="tree">
 			<?php echo getTreeView($tagCollection->getRoots(), '      '); ?>
 		</dl>
-		<h3><?php echo $searchQuery; ?></h3>
+		<h3><?php echo $state->getSearchQuery(); ?></h3>
 		<ul id="resources">
 			<?php foreach ($searchResults as $res): ?>
 				<li>
