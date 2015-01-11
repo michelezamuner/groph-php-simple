@@ -6,6 +6,11 @@ class Vector extends ArrayObject
 		return new self($array);
 	}
 	
+	public static function explode($delimiter, $string)
+	{
+		return new self(explode($delimiter, $string));
+	}
+	
 	public function toStringsArray()
 	{
 		$array = Array();
@@ -50,23 +55,5 @@ class Vector extends ArrayObject
 				$this->getArrayCopy(), $array));
 		
 		return $this;
-	}
-	
-	/**
-	 * Descend a vector of vectors, following
-	 * the path formatted as 'key1/key2/...'
-	 * 
-	 * @param String $path
-	 */
-	public function get($path)
-	{
-		$result = $this;
-		$steps = explode('/', $path);
-		foreach ($steps as $step)
-			$result = $result[$step];
-		
-		return is_array($result)
-			? self::create($result)
-			: $result;
 	}
 }

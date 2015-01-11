@@ -19,7 +19,7 @@ class Param
 	
 	public function __toString()
 	{
-		return $this->value;
+		return $this->getValue();
 	}
 	
 	public function getName()
@@ -29,6 +29,6 @@ class Param
 	
 	public function getValue()
 	{
-		return $this->value;
+		return urldecode($this->value);
 	}
 }

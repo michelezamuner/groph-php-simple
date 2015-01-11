@@ -1,6 +1,18 @@
 <?php
 include 'vendor/autoload.php';
 
+function getTagsFromString($string)
+{
+	$tags = array();
+	$string = preg_replace('/\s+,\s+/', ',', $string);
+	$groups = empty($string) ? array() : explode(',', $string);
+	foreach ($groups as $group)
+		$tags[] = array_map(function($tag) {
+			return trim($tag);
+		}, explode(':', $group));
+	return $tags;
+}
+
 function getTagLinks(Tag\Tag $tag) {
 	global $state;
 	global $path, /*$searchQuery, */$selectedTag;
@@ -200,6 +212,9 @@ function export($file) {
 			}
 		}
 	}
+	
+	// TODO: Check if this works with:
+	// $res->getTags()->map(function(Tag $tag) { return (string)$tag; });
 	$resources = array();
 	foreach ($resCollection->findLike(array('')) as $res)
 		$resources[$res->getLink()] = array($res->getTitle(),
@@ -255,7 +270,7 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 try {
 	$conf = include('configuration.php');
 	$logger = new Logger('groph.log');
-	$database = new Database($conf->get('db'), $logger);
+	$database = new Database($conf['db'], $logger);
 	$tagFactory = new Tag\Factory($database, $logger);
 	$resFactory = new Resource\Factory($tagFactory, $database, $logger);
 	$tagCollection = $tagFactory->getCollection();
@@ -282,6 +297,22 @@ try {
 			$database->reset();
 			import('groph.json');
 			break;
+		case $state->getResourceAdd():
+			// TODO: find a place for getTagsFromString
+			// TODO: finding tags by name is going not to
+			// be possible any more
+			// TODO: refactor getTagWithDescendants
+			// TODO: put array_reverse inside Vector
+			$add = $state->getResourceAdd();
+			$tags = array();
+			foreach (getTagsFromString($add->getParam('tags')) as $tag) {
+				// Add the missing parents of the current tag
+				getTagWithDescendants(array_reverse($tag));
+				$tags[] = $tagCollection->findByName($tag[0]);
+			}
+			$resCollection->add(array($add->getParam('link'),
+					$add->getParam('title'), $tags));
+			break;
 		default:
 			break;
 	}
@@ -306,18 +337,6 @@ try {
 		} else {
 			$selectedTag = null;
 		}
-	}
-	
-	if (isset($_POST['add'])) {
-		$tagsString = preg_replace('/\s+,\s+/', ',', $_POST['add:tags']);
-		$tagGroups = empty($tagsString) ? array() : explode(',', $tagsString);
-		$tags = array();
-		foreach ($tagGroups as $group) {
-			$tagsNames = array_reverse(explode(':', $group));
-			getTagWithDescendants($tagsNames);
-			$tags[] = $tagCollection->findByName($tagsNames[count($tagsNames) - 1]);
-		}
-		$resCollection->add(array($_POST['add:link'], $_POST['add:name'], $tags));
 	}
 	
 	if (isset($_POST['tag:add'])) {
@@ -453,23 +472,32 @@ try {
 						$('input[name="res:edit:title"]').focus();
 					<?php endif; ?>
 				<?php endif; ?>
-				<?php if (isset($_GET['link'])): ?>
-					$('input[name="add:tags"]').focus();
-					$('input[name="add"]').click(function(event) {
+
+				<?php
+				/**
+				 * If the user is adding a resource with
+				 * prefilled fields, add the new resource
+				 * via AJAX, then close the popup window.
+				 */
+				if ($state->getResourceAddPrefill()->getIsSet()) {
+					$add = $state->getResourceAdd();
+					$prefill = $state->getResourceAddPrefill(); ?>
+					$('input[name="<?php echo $add->getParam('tags')->getName(); ?>"]').focus();
+					$('input[name="<?php echo $add?>"]').click(function(event) {
 						event.preventDefault();
-						<?php $url = $location->getClone()
-							->setParam('ajax', '1')->getUrl(); ?>
+						<?php $url = $location->getClone()->setParam('ajax', '1')->getUrl(); ?>
 						$.post('<?php echo $url; ?>', {
-							'add': 'Add Resource',
-							'add:link': '<?php echo $_GET['link']; ?>',
-							'add:name': '<?php echo $_GET['title']; ?>',
-							'add:tags': $('input[name="add:tags"]').val()
+							'<?php echo $add; ?>': 'Add Resource',
+							'<?php echo $add->getParam('link')->getName(); ?>': '<?php echo $prefill->getParam('link'); ?>',
+							'<?php echo $add->getParam('title')->getName(); ?>': '<?php echo $prefill->getParam('title'); ?>',
+							'<?php echo $add->getParam('tags')->getName(); ?>': $('input[name="<?php echo $add->getParam('tags')->getName(); ?>"]').val()
 						}, function(data) {
 							if (data !== 'success') alert(data);
 							window.close();
 						});
 					});
-				<?php endif; ?>
+				<?php } ?>
+				
 				<?php if (isset($selectedTag)): ?>
 					$('input[name="tag:edit"]').click(function(event) {
 						var oldName = '<?php echo $selectedTag; ?>';
@@ -552,18 +580,20 @@ try {
 				<input type="submit" name="<?php echo $state->getSearch(); ?>" value="Search">
 			</fieldset>
 		</form>
-		<form id="add" method="POST">
+		<form id="resource:add" method="POST">
 			<fieldset>
 				<legend>Add New Resource</legend>
 				<label>Link</label>
-				<?php $link = isset($_GET['link']) ? urldecode($_GET['link']) : ''; ?>
-				<input type="text" name="add:link" value="<?php echo $link; ?>">
+				<?php $add = $state->getResourceAdd(); ?>
+				<?php $prefill = $state->getResourceAddPrefill(); ?>
+				<input type="text" name="<?php echo $add->getParam('link')->getName(); ?>"
+						value="<?php echo $prefill->getParam('link'); ?>">
 				<label>Title</label>
-				<?php $title = isset($_GET['title']) ? urldecode($_GET['title']) : ''; ?>
-				<input type="text" name="add:name" value="<?php echo $title; ?>">
+				<input type="text" name="<?php echo $add->getParam('title')->getName(); ?>"
+						value="<?php echo $prefill->getParam('title'); ?>">
 				<label >Tags</label>
-				<input type="text" name="add:tags">
-				<input type="submit" name="add" value="Add Resource">
+				<input type="text" name="<?php echo $add->getParam('tags')->getName(); ?>">
+				<input type="submit" name="<?php echo $add; ?>" value="Add Resource">
 			</fieldset>
 		</form>
 		<?php if ($selectedRes): ?>
@@ -633,7 +663,7 @@ try {
 				</li>
 			<?php endforeach; ?>
 		</ul>
-		<p>Quick link url: javascript:(function()%7Bvar%20a%3Dwindow,b%3Ddocument,c%3DencodeURIComponent,d%3Da.open("http://<?php echo $_SERVER['HTTP_HOST'].$location->getPath(); ?>%3Flink%3D"%2Bc(b.location)%2B"%26title%3D"%2Bc(b.title),"groph_popup","left%3D"%2B((a.screenX%7C%7Ca.screenLeft)%2B10)%2B",top%3D"%2B((a.screenY%7C%7Ca.screenTop)%2B10)%2B",height%3D420px,width%3D550px,resizable%3D1,alwaysRaised%3D1,scrollbars%3D1")%3Ba.setTimeout(function()%7Bd.focus()%7D,300)%7D)()%3B</p>
+		<p>Quick link url: javascript:(function()%7Bvar%20a%3Dwindow,b%3Ddocument,c%3DencodeURIComponent,d%3Da.open("http://<?php echo $_SERVER['HTTP_HOST'].$location->getPath(); ?>%3Fresource%3Aadd%3Aprefill%3Alink%3D"%2Bc(b.location)%2B"%26resource%3Aadd%3Aprefill%3Atitle%3D"%2Bc(b.title),"groph_popup","left%3D"%2B((a.screenX%7C%7Ca.screenLeft)%2B10)%2B",top%3D"%2B((a.screenY%7C%7Ca.screenTop)%2B10)%2B",height%3D420px,width%3D550px,resizable%3D1,alwaysRaised%3D1,scrollbars%3D1")%3Ba.setTimeout(function()%7Bd.focus()%7D,300)%7D)()%3B</p>
 	</body>
 </html>
 <?php

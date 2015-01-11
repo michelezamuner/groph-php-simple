@@ -1,31 +1,41 @@
 <?php
 namespace State\Action;
 
-class Action
+use Vector;
+
+abstract class Action
 {
-	public static function create($type, $name)
+	public static function create($name, Array $params = Array())
 	{
-		return new self($type, $name);
+		return new static($name, $params);
 	}
 	
-	private $name = NULL;
-	private $global = NULL;
-	private $params = array();
+	protected $name = NULL;
+	protected $global = NULL;
+	protected $params = NULL;
+	protected $isSet = NULL;
 	
-	private function __construct($type, $name)
+	public function __construct($name, Array $params)
 	{
 		$this->name = $name;
-		if ($type === 'GET')
-			$this->global = $_GET;
-		else if ($type === 'POST')
-			$this->global = $_POST;
-		else
-			throw new Exception('Invalid action type '.$type);
+		$this->setGlobal();
+		
+		$this->params = Vector::create();
+		foreach ($params as $name)
+			$this->addParam($name);
 	}
 	
 	public function __toString()
 	{
 		return $this->name;
+	}
+	
+	public function getIsSet()
+	{
+		// Cache the result the first time
+		if ($this->isSet === NULL)
+			$this->isSet = $this->concreteGetIsSet();
+		return $this->isSet;
 	}
 	
 	public function getName()
@@ -36,9 +46,7 @@ class Action
 	public function getParam($name)
 	{
 		$name = "$this->name:$name";
-		return isset($this->params[$name])
-			? $this->params[$name]
-			: NULL;
+		return $this->params[$name];
 	}
 	
 	public function addParam($name)
@@ -49,4 +57,7 @@ class Action
 		$this->params[$name] = Param::create($name, $value);
 		return $this;
 	}
+	
+	abstract protected function setGlobal();
+	abstract protected function concreteGetIsSet();
 }

@@ -2,6 +2,8 @@
 namespace State;
 
 use State\Action\Action;
+use State\Action\Get;
+use State\Action\Post;
 use Vector;
 
 class State
@@ -11,43 +13,41 @@ class State
 		return new self();
 	}
 	
-	private $actions = array(
-		'GET' => array(),
-		'POST' => array()
-	);
+	private $actions = array();
 	
 	public function __construct()
 	{
-		$this->addAction('POST', 'manage:export');
-		$this->addAction('POST', 'manage:import',
-				array('file'));
-		$this->addAction('GET', 'search',
-				array('query'));
+		$this->addAction(Post::create('manage:export'));
+		$this->addAction(Post::create('manage:import',
+				array('file')));
+		$this->addAction(Get::create('search',
+				array('query')));
+		$this->addAction(Post::create('resource:add',
+				array('link', 'title', 'tags')));
+		$this->addAction(Get::create('resource:add:prefill',
+				array('link', 'title')));
 	}
 	
-	private function addAction($type, $name, $params = array())
+	private function addAction(Action $action)
 	{
-		$action = Action::create($type, $name);
-		foreach ($params as $paramName)
-			$action->addParam($paramName);
-		$this->actions[$type][$name] = $action;
+		$this->actions[$action->getName()] = $action;
 		return $this;
 	}
 	
 	public function getExport()
 	{
-		return $this->actions['POST']['manage:export'];
+		return $this->actions['manage:export'];
 	}
 	
 	public function getImport()
 	{
-		$import = $this->actions['POST']['manage:import'];
-		return $this->actions['POST']['manage:import'];
+		$import = $this->actions['manage:import'];
+		return $this->actions['manage:import'];
 	}
 	
 	public function getSearch()
 	{
-		return $this->actions['GET']['search'];
+		return $this->actions['search'];
 	}
 	
 	public function getSearchQuery()
@@ -55,11 +55,21 @@ class State
 		return $this->getSearch()->getParam('query');
 	}
 	
+	public function getResourceAdd()
+	{
+		return $this->actions['resource:add'];
+	}
+	
+	public function getResourceAddPrefill()
+	{
+		return $this->actions['resource:add:prefill'];
+	}
+	
 	public function getPost()
 	{
-		foreach ($this->actions['POST'] as $action) {
-			if (isset($_POST[$action->getName()]))
+		foreach ($this->actions as $action)
+			if ($action instanceof Post && $action->getIsSet())
 				return $action;
-		}
+		return NULL;
 	}
 }
