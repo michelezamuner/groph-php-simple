@@ -3,7 +3,7 @@ namespace Resource;
 
 use Model\Model;
 use Tag\Tag;
-use Model\Vector;
+use Vector;
 
 class Resource extends Model
 {
@@ -78,7 +78,7 @@ class Resource extends Model
 
 	public function getTags()
 	{
-		return new Vector($this->tags);
+		return Vector::create($this->tags);
 	}
 
 	public function setTags(Array $tags)

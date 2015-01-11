@@ -22,7 +22,7 @@ class Database
 		foreach ($this->select('name', 'sqlite_master', 'type=\'table\'') as $row)
 			$tables[] = $row['name'];
 		foreach ($tables as $table)
-			$this->exec('DROP TABLE IF EXISTS '.$table);
+			$this->exec('DELETE FROM '.$table);
 	}
 
 	public function createTable($table, $columns)

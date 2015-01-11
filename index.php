@@ -201,7 +201,7 @@ function export($file) {
 	$resources = array();
 	foreach ($resCollection->findLike(array('')) as $res)
 		$resources[$res->getLink()] = array($res->getTitle(),
-				$res->getTags()->toArray());
+				$res->getTags()->toStringsArray());
 	file_put_contents($file, prettifyJson(json_encode(array(
 		'tags' => $tags, 'resources' => $resources
 	))));
@@ -239,13 +239,10 @@ function printTrace(Array $trace, $sep = PHP_EOL) {
 }
 
 register_shutdown_function(function() {
-	global $export;
-	if ($export) return;
 	$errors = error_get_last();
 	if ($errors) {
 		file_put_contents(__DIR__.'/errors.log',
 				date('Y-m-d H:i:s').implode(PHP_EOL, $errors), FILE_APPEND);
-// 		echo '<p>', implode('<br>', $errors), '</p>';
 	}
 });
 
@@ -254,29 +251,28 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 });
 
 try {
-	$configuration = include('configuration.php');
+	$conf = include('configuration.php');
+	$state = State::create($conf);
 	$logger = new Logger('groph.log');
-// 	$database = new Database('groph.sqlite', $logger);
-	$database = new Database($configuration['db'], $logger);
-	$export = false;
-	$import = false;
-	if (isset($_POST['manage:import'])) {
-		move_uploaded_file($_FILES['manage:file']['tmp_name'], 'groph.json');
-		$database->reset();
-		$import = true;
-	}
-	
+	$database = new Database($conf->get('db'), $logger);
 	$tagFactory = new Tag\Factory($database, $logger);
 	$resFactory = new Resource\Factory($tagFactory, $database, $logger);
 	$tagCollection = $tagFactory->getCollection();
 	$resCollection = $resFactory->getCollection();
 	$tagFactory->addListener($resCollection);
-	if ($import) import('groph.json');
-// 	export('groph.json');
-// 	import('groph.json');
+	
+	switch ($state->getPost()) {
+		case $conf->get('actions/manage/post/import'):
+			move_uploaded_file(
+					$_FILES[$conf->get('actions/manage/file')]['tmp_name'],
+					'groph.json');
+			$database->reset();
+			import('groph.json');
+			break;
+		default:
+	}
 
 	if (isset($_POST['manage:export'])) {
-		$export = true;
 		export('groph.json');
 		header('Content-Description: File Transfer');
 		header('Content-Type: application/octet-stream');
@@ -441,13 +437,16 @@ try {
 	if (isset($_GET['ajax'])) exit('success');
 	
 	$searchResults = getSearchResults();
-} catch (Exception $e) {
-	file_put_contents(__DIR__.'/errors.log',
-			date('Y-m-d H:i:s').': '.$e->getMessage().PHP_EOL.
-			printTrace($e->getTrace()), FILE_APPEND);
-	echo '<p>', $e->getMessage(), '</p>';
-	echo '<p>', printTrace($e->getTrace(), '<br>'), '</p>';
-}
+	
+	/**
+	 * @var Vector|Null $f Form input names.
+	 * 
+	 *  For each form, input names are taken from
+	 *  $conf['actions'] and saved inside
+	 *  this variable to be easily fetched and
+	 *  printed inside the form's HTML.
+	 */
+	$f = Null;
 ?>
 <!doctype html>
 <html lang="en">
@@ -549,11 +548,12 @@ try {
 		</script>
 	</head>
 	<body>
+		<?php $f = $conf->get('actions/manage'); ?>
 		<form id="manage" method="POST" enctype="multipart/form-data">
-			<input type="submit" name="manage:export" value="Export">
+			<input type="submit" name="<?php echo $f->get('post/export'); ?>" value="Export">
 			<label>File</label>
-			<input type="file" name="manage:file">
-			<input type="submit" name="manage:import" value="Import">
+			<input type="file" name="<?php echo $f->get('file'); ?>">
+			<input type="submit" name="<?php echo $f->get('post/import'); ?>" value="Import">
 		</form>
 		<form id="search">
 			<fieldset>
@@ -646,3 +646,12 @@ try {
 		<p>Quick link url: javascript:(function()%7Bvar%20a%3Dwindow,b%3Ddocument,c%3DencodeURIComponent,d%3Da.open("http://<?php echo $_SERVER['HTTP_HOST'].$location->getPath(); ?>%3Flink%3D"%2Bc(b.location)%2B"%26title%3D"%2Bc(b.title),"groph_popup","left%3D"%2B((a.screenX%7C%7Ca.screenLeft)%2B10)%2B",top%3D"%2B((a.screenY%7C%7Ca.screenTop)%2B10)%2B",height%3D420px,width%3D550px,resizable%3D1,alwaysRaised%3D1,scrollbars%3D1")%3Ba.setTimeout(function()%7Bd.focus()%7D,300)%7D)()%3B</p>
 	</body>
 </html>
+<?php
+} catch (Exception $e) {
+	file_put_contents(__DIR__.'/errors.log',
+	date('Y-m-d H:i:s').': '.$e->getMessage().PHP_EOL.
+	printTrace($e->getTrace()), FILE_APPEND);
+	echo '<p>', $e->getMessage(), '</p>';
+	echo '<p>', printTrace($e->getTrace(), '<br>'), '</p>';
+}
+?>
