@@ -261,6 +261,7 @@ try {
 	$resCollection = $resFactory->getCollection();
 	$tagFactory->addListener($resCollection);
 	
+	// Manages POST submits
 	switch ($state->getPost()) {
 		case $conf->get('actions/manage/post/import'):
 			move_uploaded_file(
@@ -269,21 +270,33 @@ try {
 			$database->reset();
 			import('groph.json');
 			break;
+		case $conf->get('actions/manage/post/export'):
+			export('groph.json');
+			header('Content-Description: File Transfer');
+			header('Content-Type: application/octet-stream');
+			header('Content-Disposition: attachment; filename=groph.json');
+			header('Expires: 0');
+			header('Cache-Control: must-revalidate');
+			header('Pragma: public');
+			header('Content-Length: ' . filesize('groph.json'));
+			readfile('groph.json');
+			exit();
+			break;
 		default:
 	}
 
-	if (isset($_POST['manage:export'])) {
-		export('groph.json');
-		header('Content-Description: File Transfer');
-		header('Content-Type: application/octet-stream');
-		header('Content-Disposition: attachment; filename=groph.json');
-		header('Expires: 0');
-		header('Cache-Control: must-revalidate');
-		header('Pragma: public');
-		header('Content-Length: ' . filesize('groph.json'));
-		readfile('groph.json');
-		exit();
-	}
+// 	if (isset($_POST['manage:export'])) {
+// 		export('groph.json');
+// 		header('Content-Description: File Transfer');
+// 		header('Content-Type: application/octet-stream');
+// 		header('Content-Disposition: attachment; filename=groph.json');
+// 		header('Expires: 0');
+// 		header('Cache-Control: must-revalidate');
+// 		header('Pragma: public');
+// 		header('Content-Length: ' . filesize('groph.json'));
+// 		readfile('groph.json');
+// 		exit();
+// 	}
 
 	if (isset($_POST['tag:delete'])) {
 		$tag = $tagCollection->findByName($_GET['tag'])->delete();
