@@ -19,6 +19,11 @@ class Vector extends ArrayObject
 		return $array;
 	}
 	
+	public function copy()
+	{
+		return new self($this->getArrayCopy());
+	}
+	
 	public function has($value)
 	{
 		return in_array($value, (array)$this);
@@ -30,7 +35,7 @@ class Vector extends ArrayObject
 	 */
 	public function map($callback)
 	{
-		return new Self(array_map($callback), $this->getArrayCopy());
+		return new self(array_map($callback, $this->getArrayCopy()));
 	}
 
 	/**
@@ -54,6 +59,21 @@ class Vector extends ArrayObject
 		$this->exchangeArray(array_merge(
 				$this->getArrayCopy(), $array));
 		
+		return $this;
+	}
+	
+	public function shift()
+	{
+		$current = $this->arrayCopy();
+		$output = array_shift($current);
+		$this->exchangeArray($current);
+		return $output;
+	}
+	
+	public function reverse()
+	{
+		$this->exchangeArray(array_reverse(
+				$this->getArrayCopy()));
 		return $this;
 	}
 }

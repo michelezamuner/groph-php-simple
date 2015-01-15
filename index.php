@@ -1,18 +1,6 @@
 <?php
 include 'vendor/autoload.php';
 
-function getTagsFromString($string)
-{
-	$tags = array();
-	$string = preg_replace('/\s+,\s+/', ',', $string);
-	$groups = empty($string) ? array() : explode(',', $string);
-	foreach ($groups as $group)
-		$tags[] = array_map(function($tag) {
-			return trim($tag);
-		}, explode(':', $group));
-	return $tags;
-}
-
 function getTagLinks(Tag\Tag $tag) {
 	global $state;
 	global $path, /*$searchQuery, */$selectedTag;
@@ -298,17 +286,17 @@ try {
 			import('groph.json');
 			break;
 		case $state->getResourceAdd():
-			// TODO: find a place for getTagsFromString
 			// TODO: finding tags by name is going not to
 			// be possible any more
 			// TODO: refactor getTagWithDescendants
 			// TODO: put array_reverse inside Vector
 			$add = $state->getResourceAdd();
 			$tags = array();
-			foreach (getTagsFromString($add->getParam('tags')) as $tag) {
+			$groups = $tagCollection::parseTagsNames($add->getParam('tags'));
+			foreach ($groups as $group) {
 				// Add the missing parents of the current tag
-				getTagWithDescendants(array_reverse($tag));
-				$tags[] = $tagCollection->findByName($tag[0]);
+				getTagWithDescendants((array)$group->copy()->reverse());
+				$tags[] = $tagCollection->findByName($group[0]);
 			}
 			$resCollection->add(array($add->getParam('link'),
 					$add->getParam('title'), $tags));

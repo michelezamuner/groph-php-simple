@@ -1,10 +1,26 @@
 <?php
 namespace Tag;
 
+use Vector;
 use Model\Collection as ModelCollection;
 
 class Collection extends ModelCollection
 {
+	/**
+	 * @param String $string
+	 * @return Vector
+	 */
+	public static function parseTagsNames($string)
+	{
+		$tags = Vector::create();
+		$string = preg_replace('/\s+,\s+/', ',', $string);
+		$groups = empty($string) ? Array() : explode(',', $string);
+		foreach ($groups as $group)
+			$tags[] = Vector::explode(':', $group)
+			->map(function($tag) { return trim($tag); });
+		return $tags;
+	}
+	
 	private $parentsIndex = array();
 
 	public function __construct(Factory $factory)
@@ -69,26 +85,25 @@ class Collection extends ModelCollection
 
 	protected function loadById($id)
 	{
-	$tag = $this->factory->create(array(
-			$this->db->selectFirst('name', $this->mainTable, "id = $id")->name,
-					$id));
+		$tag = $this->factory->create(array($this->db->selectFirst(
+				'name', $this->mainTable, "id = $id")->name, $id));
 
-					$columns = 'r.child, t.name';
-					$table = "$this->relationsTable r LEFT JOIN $this->mainTable t
-					ON t.id = r.child";
-					$where = "r.parent = $id ORDER BY t.name ASC";
-					foreach ($this->db->select($columns, $table, $where) as $row)
-						$tag->addChild($this->loadById($row[0]));
+		$columns = 'r.child, t.name';
+		$table = "$this->relationsTable r LEFT JOIN $this->mainTable t
+		ON t.id = r.child";
+		$where = "r.parent = $id ORDER BY t.name ASC";
+		foreach ($this->db->select($columns, $table, $where) as $row)
+			$tag->addChild($this->loadById($row[0]));
 
-						return $tag;
+		return $tag;
 }
 
 	protected function createTables()
 	{
-							$this->db->createTable($this->mainTable, 'name TEXT UNIQUE NOT NULL');
-							$this->db->createTable($this->relationsTable,
+		$this->db->createTable($this->mainTable, 'name TEXT UNIQUE NOT NULL');
+		$this->db->createTable($this->relationsTable,
 					'child INTEGER NOT NULL, parent INTEGER NOT NULL');
-							return $this;
+		return $this;
 	}
 	
 	protected function log($message)
