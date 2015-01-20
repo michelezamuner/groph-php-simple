@@ -18,7 +18,7 @@ abstract class Collection
 		$this->relationsTable = $this->getRelationsTable();
 		$this->createTables();
 	}
-
+	
 	abstract public function getMainTable();
 	abstract public function getRelationsTable();
 	abstract public function load(Array $seeds);

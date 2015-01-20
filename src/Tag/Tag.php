@@ -2,20 +2,29 @@
 namespace Tag;
 
 use Model\Model;
+use Exception;
+use Vector;
+use Closure;
 
 class Tag extends Model
 {
-	private $name = '';
+	public static function normalize($name)
+	{
+		return strtolower($self->factory->getDb()
+				->sanitize($name));
+	}
+	private $name = Null;
 	private $children = array();
 	private $parents = array();
 	private $listeners = array();
 
 	public function __construct(Factory $factory, $name, $id = 0)
 	{
-		parent::__construct($factory, $id);
-		$this->name = $this->db->sanitize($name);
-		if (empty($this->name))
+		if (empty($name))
 			throw new Exception('Cannot create new tag with empty name');
+		parent::__construct($factory, $id);
+		$this->name = Name::create($name);
+// 		$this->name = $this->db->sanitize($name);
 	}
 
 	public function __toString()
@@ -79,6 +88,19 @@ class Tag extends Model
 	{
 		return $this->children;
 	}
+	
+	public function getChild($name)
+	{
+		$result = Null;
+		$self = $this;
+		foreach ($this->children as $child) {
+			if ($child->getName()->matches($name)) {
+				$result = $child;
+				break;
+			}
+		}
+		return $result;
+	}
 
 	public function addChild(Tag $tag)
 	{
@@ -130,6 +152,50 @@ class Tag extends Model
 		 
 		foreach ($this->listeners as $listener)
 			$listener->onDelete($this);
+	}
+	
+	/**
+	 * Crea un ramo di Tag (figlie le une delle altre) dai
+	 * nomi passati, e lo aggiunge sotto la Tag corrente.
+	 * Opzionalmente, ritorna nel parametro passato per
+	 * riferimento l'id dell'ultima tag del ramo creata.
+	 * @param Vector $names
+	 */
+	public function addBranch(Vector $names, & $leafId = Null)
+	{
+		$parent = $this;
+		$child = Null;
+		foreach ($names as $name) {
+			$child = $this->collection->add(Array($name));
+			$parent->addChild($child)->save();
+			$parent = $child;
+		}
+		
+		if ($leafId !== Null && $child !== Null)
+			$leafId = $child->getId();
+		
+		return $this;
+	}
+	
+	/**
+	 * Visita i discendenti di questa Tag seguendo il
+	 * percorso passato, finché è possibile, eseguendo
+	 * la funzione di callback ad ogni passo. Ritorna
+	 * l'ultima Tag visitata.
+	 * @param Vector $path
+	 * @param Closure $callback
+	 */
+	public function visitPath(Vector $path, Closure $callback)
+	{
+		$path = $path->copy();
+		$child = $this->getChild($path->shift());
+		
+		if ($child) {
+			$callback($child);
+			return $child->visitPath($path, $callback);
+		} else {
+			return $this;
+		}
 	}
 
 	protected function log($message)

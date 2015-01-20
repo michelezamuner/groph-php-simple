@@ -288,18 +288,17 @@ try {
 		case $state->getResourceAdd():
 			// TODO: finding tags by name is going not to
 			// be possible any more
-			// TODO: refactor getTagWithDescendants
-			// TODO: put array_reverse inside Vector
 			$add = $state->getResourceAdd();
-			$tags = array();
+			$tags = Vector::create();
 			$groups = $tagCollection::parseTagsNames($add->getParam('tags'));
 			foreach ($groups as $group) {
-				// Add the missing parents of the current tag
-				getTagWithDescendants((array)$group->copy()->reverse());
-				$tags[] = $tagCollection->findByName($group[0]);
+				// Add missing parents of the current tag
+				$leaves = Vector::create();
+				$tagCollection->createPath($group->reverse(), $leaves);
+				$tags->merge($leaves);
 			}
 			$resCollection->add(array($add->getParam('link'),
-					$add->getParam('title'), $tags));
+					$add->getParam('title'), (array)$tags));
 			break;
 		default:
 			break;

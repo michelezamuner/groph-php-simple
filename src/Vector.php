@@ -1,14 +1,37 @@
 <?php
 class Vector extends ArrayObject
 {
-	public static function create(Array $array = Array())
+	public static function create($arg = Array())
 	{
-		return new self($array);
+		return is_array($arg)
+			? new self($arg)
+			: new self(func_get_args());
 	}
 	
 	public static function explode($delimiter, $string)
 	{
 		return new self(explode($delimiter, $string));
+	}
+	
+	public function get($index)
+	{
+		return $this[$index];
+	}
+	
+	public function getFirst()
+	{
+		return $this[0];
+	}
+	
+	public function void()
+	{
+		$this->exchangeArray(Array());
+		return $this;
+	}
+	
+	public function isEmpty()
+	{
+		return $this->count() === 0;
 	}
 	
 	public function toStringsArray()
@@ -64,7 +87,7 @@ class Vector extends ArrayObject
 	
 	public function shift()
 	{
-		$current = $this->arrayCopy();
+		$current = $this->getArrayCopy();
 		$output = array_shift($current);
 		$this->exchangeArray($current);
 		return $output;
@@ -75,5 +98,13 @@ class Vector extends ArrayObject
 		$this->exchangeArray(array_reverse(
 				$this->getArrayCopy()));
 		return $this;
+	}
+	
+	public function getTail($offset)
+	{
+		$tail = self::create();
+		for ($i = $offset; $i < $this->count(); $i++)
+			$tail->append($this[$i]);
+		return $tail;
 	}
 }

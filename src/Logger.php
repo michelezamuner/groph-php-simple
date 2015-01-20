@@ -6,7 +6,7 @@ class Logger
 	public function __construct($file)
 	{
 		date_default_timezone_set('Europe/Rome');
-		$this->file = __DIR__.'/'.$file;
+		$this->file = $file;
 	}
 
 	public function log($message, $context)

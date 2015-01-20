@@ -1,3 +1,5 @@
 /groph.json
 /configuration-local.php
 
+
+tests/_output/*
