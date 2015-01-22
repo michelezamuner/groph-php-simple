@@ -293,12 +293,6 @@ try {
 			$tags = Vector::create();
 			$tagCollection->createPathsFromString(
 					$add->getParam('tags'), $tags);
-// 			$groups = $tagCollection::parseTagsNames($add->getParam('tags'));
-// 			foreach ($groups as $group) {
-// 				$leaves = Vector::create();
-// 				$tagCollection->createPath($group->reverse(), $leaves);
-// 				$tags->merge($leaves);
-// 			}
 			$resCollection->add(array($add->getParam('link'),
 					$add->getParam('title'), (array)$tags));
 			break;
@@ -312,6 +306,9 @@ try {
 				->setTitle($edit->getParam('title'))
 				->setTags((Array)$tags)
 				->save();
+			break;
+		case $state->getResourceDelete():
+			$state->getSelectedResource()->delete();
 			break;
 		default:
 			break;
@@ -428,12 +425,7 @@ try {
 			return $tag->getName();
 		}, $selectedTagObject->getParents()));
 	}
-	
-	if (isset($_POST['res:delete'])/* && $selectedRes*/) {
-		$selectedRes->delete();
-		$selectedRes = null;
-	}
-		
+			
 	if (isset($_GET['ajax'])) exit('success');
 	
 	$searchResults = getSearchResults();
@@ -530,7 +522,8 @@ try {
 						if (message === '' || !answer)
 							event.preventDefault();
 					});
-					$('input[name="res:delete"]').click(function(event) {
+					$('input[name="<?php echo $state->getResourceDelete(); ?>"]').click(function(event) {
+					//$('input[name="res:delete"]').click(function(event) {
 						answer = confirm('Deleting resource <?php
 								echo $selectedRes->getTitle(); ?>. Continue?');
 						if (!answer)

@@ -33,8 +33,7 @@ class State
 				Array('id')));
 		$this->addAction(Post::create('resource:edit',
 				Array('id', 'link', 'title', 'tags')));
-		$this->addAction(Post::create('resource:delete',
-				Array('id')));
+		$this->addAction(Post::create('resource:delete'));
 	}
 	
 	private function addAction(Action $action)
