@@ -8,11 +8,6 @@ use Closure;
 
 class Tag extends Model
 {
-	public static function normalize($name)
-	{
-		return strtolower($self->factory->getDb()
-				->sanitize($name));
-	}
 	private $name = Null;
 	private $children = array();
 	private $parents = array();
@@ -24,12 +19,11 @@ class Tag extends Model
 			throw new Exception('Cannot create new tag with empty name');
 		parent::__construct($factory, $id);
 		$this->name = Name::create($name);
-// 		$this->name = $this->db->sanitize($name);
 	}
 
 	public function __toString()
 	{
-		return $this->name;
+		return (string)$this->name;
 	}
 
 	public function addListener(Listener $listener)
@@ -79,7 +73,7 @@ class Tag extends Model
 
 	public function setName($name)
 	{
-		$this->name = $this->db->sanitize($name);
+		$this->name = Name::create($name);
 		$this->changed = true;
 		return $this;
 	}

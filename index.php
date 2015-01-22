@@ -248,6 +248,7 @@ register_shutdown_function(function() {
 	if ($errors) {
 		file_put_contents(__DIR__.'/errors.log',
 				date('Y-m-d H:i:s').implode(PHP_EOL, $errors), FILE_APPEND);
+		echo implode('<br>', $errors);
 	}
 });
 
@@ -264,7 +265,7 @@ try {
 	$tagCollection = $tagFactory->getCollection();
 	$resCollection = $resFactory->getCollection();
 	$tagFactory->addListener($resCollection);
-	$state = State\State::create();
+	$state = State\State::create($resCollection);
 	
 	switch ($state->getPost()) {
 		case $state->getExport():
@@ -290,15 +291,27 @@ try {
 			// be possible any more
 			$add = $state->getResourceAdd();
 			$tags = Vector::create();
-			$groups = $tagCollection::parseTagsNames($add->getParam('tags'));
-			foreach ($groups as $group) {
-				// Add missing parents of the current tag
-				$leaves = Vector::create();
-				$tagCollection->createPath($group->reverse(), $leaves);
-				$tags->merge($leaves);
-			}
+			$tagCollection->createPathsFromString(
+					$add->getParam('tags'), $tags);
+// 			$groups = $tagCollection::parseTagsNames($add->getParam('tags'));
+// 			foreach ($groups as $group) {
+// 				$leaves = Vector::create();
+// 				$tagCollection->createPath($group->reverse(), $leaves);
+// 				$tags->merge($leaves);
+// 			}
 			$resCollection->add(array($add->getParam('link'),
 					$add->getParam('title'), (array)$tags));
+			break;
+		case $state->getResourceEdit():
+			$edit = $state->getResourceEdit();
+			$tags = Vector::create();
+			$tagCollection->createPathsFromString(
+					$edit->getParam('tags'), $tags);
+			$resCollection->find($edit->getParam('id'))
+				->setLink($edit->getParam('link'))
+				->setTitle($edit->getParam('title'))
+				->setTags((Array)$tags)
+				->save();
 			break;
 		default:
 			break;
@@ -311,8 +324,6 @@ try {
 	
 	$location = new Location();
 	$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-	$selectedRes =  isset($_GET['res'])
-		? $resCollection->find($_GET['res']) : null;
 	
 	if (isset($_GET['tag'])) {
 		$selectedTag = $_GET['tag'];
@@ -418,31 +429,15 @@ try {
 		}, $selectedTagObject->getParents()));
 	}
 	
-	if (isset($_POST['res:delete']) && $selectedRes) {
+	if (isset($_POST['res:delete'])/* && $selectedRes*/) {
 		$selectedRes->delete();
 		$selectedRes = null;
 	}
-	
-	if (isset($_POST['res:edit']) && $selectedRes) {
-		$selectedRes->setLink($_POST['res:edit:link'])
-			->setTitle($_POST['res:edit:title']);
-		if (!empty($_POST['res:edit:tags'])) {
-			$tags = array();
-			$tagsString = preg_replace('/\s+,\s+/', ',', $_POST['res:edit:tags']);
-			$tagsGroups = empty($tagsString) ? array() : explode(',', $tagsString);
-			foreach ($tagsGroups as $tagGroup) {
-				$tagsNames = array_reverse(explode(':', $tagGroup));
-				getTagWithDescendants($tagsNames);
-				$tags[] = $tagCollection->findByName($tagsNames[count($tagsNames) - 1]);
-			}
-			$selectedRes->setTags($tags);
-		}
-		$selectedRes->save();
-	}
-	
+		
 	if (isset($_GET['ajax'])) exit('success');
 	
 	$searchResults = getSearchResults();
+	$selectedRes = $state->getSelectedResource();
 ?>
 <!doctype html>
 <html lang="en">
@@ -452,14 +447,6 @@ try {
 		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 		<script>
 			$(function() {
-				<?php if (isset($_GET['focus'])): ?>
-					<?php if ($_GET['focus'] === 'tag'): ?>
-						$('input[name="tag:edit:name"]').focus();
-					<?php elseif ($_GET['focus'] === 'res'): ?>
-						$('input[name="res:edit:title"]').focus();
-					<?php endif; ?>
-				<?php endif; ?>
-
 				<?php
 				/**
 				 * If the user is adding a resource with
@@ -484,7 +471,7 @@ try {
 						});
 					});
 				<?php } ?>
-				
+
 				<?php if (isset($selectedTag)): ?>
 					$('input[name="tag:edit"]').click(function(event) {
 						var oldName = '<?php echo $selectedTag; ?>';
@@ -515,13 +502,14 @@ try {
 					});
 				<?php endif; ?>
 				<?php if ($selectedRes): ?>
-					$('input[name="res:edit"]').click(function(event) {
+					<?php $edit = $state->getResourceEdit(); ?>
+					$('input[name="<?php echo $edit; ?>"]').click(function(event) {
 						var oldTitle = '<?php echo $selectedRes->getTitle(); ?>';
 						var oldLink = '<?php echo $selectedRes->getLink(); ?>';
 						var oldTags = '<?php echo $selectedRes->getTags()->implode(', '); ?>';
-						var newTitle = $('input[name="res:edit:title"]').val();
-						var newLink = $('input[name="res:edit:link"]').val();
-						var newTags = $('input[name="res:edit:tags"]').val();
+						var newTitle = $('input[name="<?php echo $edit->getParam('title')->getName(); ?>"]').val();
+						var newLink = $('input[name="<?php echo $edit->getParam('link')->getName(); ?>"]').val();
+						var newTags = $('input[name="<?php echo $edit->getParam('tags')->getName(); ?>"]').val();
 						var message = '';
 						if (oldTitle !== newTitle)
 							message += 'Changing title "' + oldTitle
@@ -562,8 +550,11 @@ try {
 		<form id="search">
 			<fieldset>
 				<legend>Search Resources</legend>
-				<input type="text" name="<?php echo $state->getSearch()->getParam('query')->getName(); ?>"
-						value="<?php echo $state->getSearchQuery(); ?>">
+				<input type="text"
+						name="<?php echo $state->getSearch()->getParam('query')->getName(); ?>"
+						value="<?php echo $state->getSearchQuery(); ?>"
+						<?php if (!$location->getParam('focus')):?>
+							autofocus<?php endif;?>>
 				<input type="submit" name="<?php echo $state->getSearch(); ?>" value="Search">
 			</fieldset>
 		</form>
@@ -584,20 +575,30 @@ try {
 			</fieldset>
 		</form>
 		<?php if ($selectedRes): ?>
+			<?php $edit = $state->getResourceEdit(); ?>
+			<?php $delete = $state->getResourceDelete(); ?>
 			<form id="res:edit" method="POST">
 				<fieldset>
 					<legend>Edit Resource <?php echo $selectedRes->getTitle(); ?></legend>
-					<label>New Title:</label>
-					<input type="text" name="res:edit:title" value="<?php
-							echo $selectedRes->getTitle(); ?>">
 					<label>New Link:</label>
-					<input type="text" name="res:edit:link" value="<?php
-							echo $selectedRes->getLink(); ?>">
+					<input type="hidden"
+						name="<?php echo $edit->getParam('id')->getName(); ?>"
+						value="<?php echo $selectedRes->getId(); ?>">
+					<input type="text"
+						name="<?php echo $edit->getParam('link')->getName(); ?>"
+						value="<?php echo $selectedRes->getLink(); ?>"
+						<?php if ($location->getParam('focus') === 'res'): ?>
+						autofocus<?php endif; ?>>
+					<label>New Title:</label>
+					<input type="text"
+						name="<?php echo $edit->getParam('title')->getName(); ?>"
+						value="<?php echo $selectedRes->getTitle(); ?>">
 					<label>New Tags:</label>
-					<input type="text" name="res:edit:tags" value="<?php
-							echo $selectedRes->getTags()->implode(', '); ?>">
-					<input type="submit" name="res:edit" value="Edit Resource">
-					<input type="submit" name="res:delete" value="Delete Resource">
+					<input type="text"
+						name="<?php echo $edit->getParam('tags')->getName(); ?>"
+						value="<?php echo $selectedRes->getTags()->implode(', '); ?>">
+					<input type="submit" name="<?php echo $edit; ?>" value="Edit Resource">
+					<input type="submit" name="<?php echo $delete; ?>" value="Delete Resource">
 				</fieldset>
 			</form>
 		<?php endif; ?>
@@ -617,7 +618,11 @@ try {
 				<fieldset>
 					<legend>Edit Tag <?php echo $selectedTag; ?></legend>
 					<label>New Name:</label>
-					<input type="text" name="tag:edit:name" value="<?php echo $selectedTagObject->getName(); ?>">
+					<input type="text"
+						name="tag:edit:name"
+						value="<?php echo $selectedTagObject->getName(); ?>"
+						<?php if ($location->getParam('focus') === 'tag'): ?>
+						autofocus<?php endif; ?>>
 					<label>New Parents:</label>
 					<input type="text" name="tag:edit:parents" value="<?php echo $searchParents; ?>">
 					<input type="submit" name="tag:edit" value="Edit Tag">
@@ -640,7 +645,7 @@ try {
 						<p><?php echo $res->getLink(); ?></p>
 					<?php endif; ?>
 					<a href="<?php echo $location->getClone()
-							->setParam('res', $res->getId())
+							->setParam($state->getResourceSelect()->getParam('id')->getName(), $res->getId())
 							->setParam('focus', 'res')->getUrl(); ?>">edit</a>
 					<ul>
 						<?php foreach ($res->getTags() as $tag): ?>

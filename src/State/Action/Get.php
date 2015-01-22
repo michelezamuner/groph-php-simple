@@ -1,6 +1,8 @@
 <?php
 namespace State\Action;
 
+use Exception;
+
 class Get extends Action
 {
 	public function __construct($name, Array $params)

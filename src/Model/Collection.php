@@ -26,7 +26,7 @@ abstract class Collection
 	public function find($id)
 	{
 		return $this->db->exists($this->mainTable, "id = $id")
-		? $this->loadById($id) : null;
+			? $this->loadById($id) : null;
 	}
 
 	public function findOrAdd(Array $attributes)

@@ -122,6 +122,19 @@ class Collection extends ModelCollection
 		: array();
 	}
 	
+	public function createPathsFromString($string, Vector& $leaves)
+	{
+		$roots = Vector::create();
+		foreach(self::parseTagsNames($string) as $group) {
+			$currentLeaves = Vector::create();
+			$currentRoots = $this->createPath(
+					$group->reverse(), $currentLeaves);
+			$roots->merge($currentRoots);
+			$leaves->merge($currentLeaves);
+		}
+		return $roots;
+	}
+	
 	/**
 	 * Dato un percorso, cioè una lista di nomi di tag
 	 * in cui ogni tag è genitrice della successiva,

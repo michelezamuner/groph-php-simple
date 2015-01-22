@@ -5,27 +5,36 @@ use State\Action\Action;
 use State\Action\Get;
 use State\Action\Post;
 use Vector;
+use Resource\Collection as ResCollection;
 
 class State
 {
-	public static function create()
+	public static function create(ResCollection $resCollection)
 	{
-		return new self();
+		return new self($resCollection);
 	}
 	
-	private $actions = array();
+	private $resCollection = Null;
+	private $actions = Array();
 	
-	public function __construct()
+	public function __construct(ResCollection $resCollection)
 	{
+		$this->resCollection = $resCollection;
 		$this->addAction(Post::create('manage:export'));
 		$this->addAction(Post::create('manage:import',
-				array('file')));
+				Array('file')));
 		$this->addAction(Get::create('search',
-				array('query')));
+				Array('query')));
 		$this->addAction(Post::create('resource:add',
-				array('link', 'title', 'tags')));
+				Array('link', 'title', 'tags')));
 		$this->addAction(Get::create('resource:add:prefill',
-				array('link', 'title')));
+				Array('link', 'title')));
+		$this->addAction(Get::create('resource:select',
+				Array('id')));
+		$this->addAction(Post::create('resource:edit',
+				Array('id', 'link', 'title', 'tags')));
+		$this->addAction(Post::create('resource:delete',
+				Array('id')));
 	}
 	
 	private function addAction(Action $action)
@@ -63,6 +72,28 @@ class State
 	public function getResourceAddPrefill()
 	{
 		return $this->actions['resource:add:prefill'];
+	}
+	
+	public function getResourceSelect()
+	{
+		return $this->actions['resource:select'];
+	}
+	
+	public function getResourceEdit()
+	{
+		return $this->actions['resource:edit'];
+	}
+	
+	public function getSelectedResource()
+	{
+		return $this->resCollection->find(
+				(int)$this->getResourceSelect()
+					->getParam('id')->getValue());
+	}
+	
+	public function getResourceDelete()
+	{
+		return $this->actions['resource:delete'];
 	}
 	
 	public function getPost()

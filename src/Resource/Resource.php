@@ -39,7 +39,8 @@ class Resource extends Model
 					array('link' => $this->link, 'title' => $this->title),
 					array('id' => $this->id));
 		}
-			
+		
+		// If there are new tags, add them to DB
 		foreach ($this->getTags() as $tag) {
 			if (!$this->db->exists($relationsTable,
 					"tag = {$tag->getId()} AND resource = $this->id")) {
@@ -48,6 +49,19 @@ class Resource extends Model
 			}
 
 		}
+		
+		// If some tags aren't there any more, delete
+		// them from DB
+		$tagsIds = array_map(function(Tag $tag) {
+			return $tag->getId();
+		}, $this->tags);
+		$results = $this->db->select('tag', $relationsTable, "resource = $this->id");
+		foreach ($results as $result) {
+			if (!in_array($result['tag'], $tagsIds)) {
+				$this->db->exec('DELETE FROM '.$relationsTable.' WHERE tag = '.$result['tag']);
+			}
+		}
+		
 		$this->changed = false;
 		return $this;
 	}
@@ -84,6 +98,8 @@ class Resource extends Model
 	public function setTags(Array $tags)
 	{
 		$this->tags = $tags;
+		$this->changed = true;
+		return $this;
 	}
 
 	public function addTag(Tag $tag)

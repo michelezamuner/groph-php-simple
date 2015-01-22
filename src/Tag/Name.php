@@ -37,7 +37,8 @@ class Name
 	
 	public function matches($name)
 	{
-		if (is_string($name)) $name = self::create($name);
+		if (!$name instanceof self)
+			$name = self::create((string)$name);
 		return $this->toNorm() === $name->toNorm();
 	}
 }
