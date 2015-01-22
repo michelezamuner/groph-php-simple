@@ -308,7 +308,15 @@ try {
 				->save();
 			break;
 		case $state->getResourceDelete():
-			$state->getSelectedResource()->delete();
+			$selectedRes = $state->getSelectedResource();
+			if ($selectedRes) $selectedRes->delete();
+			break;
+		case $state->getTagAdd():
+			$name = $state->getTagAdd()->getParam('name');
+			$parent = $state->getTagAdd()->getParam('parent');
+			$path = $tagCollection->parseTagsGroup($parent)
+				->unshift($name);
+			$tagCollection->createPath($path->reverse());
 			break;
 		default:
 			break;
@@ -332,19 +340,6 @@ try {
 		} else {
 			$selectedTag = null;
 		}
-	}
-	
-	if (isset($_POST['tag:add'])) {
-		$newTagName = $_POST['tag:add:name'];
-		$tagGroupsString = preg_replace('/\s+,\s+/', ',', $_POST['tag:add:parents']);
-		$tagGroups = empty($tagGroupsString) ? array() : explode(',', $tagGroupsString);
-		foreach ($tagGroups as $group) {
-			$tagsNames = array_merge(array_reverse(explode(':', $group)),
-				array($newTagName));
-			getTagWithDescendants($tagsNames);
-		}
-		if (empty($tagGroups))
-			$tagFactory->create(array($newTagName))->save();
 	}
 	
 	if (isset($_POST['tag:edit']) && $selectedTag) {
@@ -596,13 +591,14 @@ try {
 			</form>
 		<?php endif; ?>
 		<form id="tag:add" method="POST">
+			<?php $add = $state->getTagAdd(); ?>
 			<fieldset>
 				<legend>Add New Tag</legend>
 				<label>Name</label>
-				<input type="text" name="tag:add:name">
-				<label>Parents</label>
-				<input type="text" name="tag:add:parents">
-				<input type="submit" name="tag:add" value="Add Tag">
+				<input type="text" name="<?php echo $add->getParam('name')->getName(); ?>">
+				<label>Parent</label>
+				<input type="text" name="<?php echo $add->getParam('parent')->getName(); ?>">
+				<input type="submit" name="<?php echo $add; ?>" value="Add Tag">
 			</fieldset>
 		</form>
 		<?php if (isset($selectedTag)): ?>

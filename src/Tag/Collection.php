@@ -6,19 +6,23 @@ use Model\Collection as ModelCollection;
 
 class Collection extends ModelCollection
 {
-	/**
-	 * @param String $string
-	 * @return Vector
-	 */
-	public static function parseTagsNames($string)
+	public static function parseTagsString($string)
 	{
-		$tagsNames = Vector::create();
 		$string = preg_replace('/\s+,\s+/', ',', $string);
-		$groups = empty($string) ? Array() : explode(',', $string);
-		foreach ($groups as $group)
-			$tagsNames[] = Vector::explode(':', $group)
-				->map(function($tagName) { return trim($tagName); });
-		return $tagsNames;
+		$groups = empty($string) ? Vector::create()
+			: Vector::explode(',', $string);
+		
+		return $groups->map(function($group) {
+			return call_user_func(
+				array(__CLASS__, 'parseTagsGroup'),
+				$group);
+			});
+	}
+	
+	public static function parseTagsGroup($group)
+	{
+		return Vector::explode(':', $group)->map(
+				function($name) { return Name::create($name); });
 	}
 	
 	private $parentsIndex = array();
@@ -125,7 +129,8 @@ class Collection extends ModelCollection
 	public function createPathsFromString($string, Vector& $leaves)
 	{
 		$roots = Vector::create();
-		foreach(self::parseTagsNames($string) as $group) {
+		
+		foreach(self::parseTagsString($string) as $group) {
 			$currentLeaves = Vector::create();
 			$currentRoots = $this->createPath(
 					$group->reverse(), $currentLeaves);
@@ -146,14 +151,14 @@ class Collection extends ModelCollection
 	 * aggiunta alcuna tag. Inoltre, è possibile che
 	 * questo percorso sia costruito più volte in più
 	 * punti diversi. Ritorna le root tag dei percorsi
-	 * così creati. Opzionalmente, scrive in $children
+	 * così creati. Opzionalmente, scrive in $leaves
 	 * le tag foglie dei percorsi creati.
 	 *
 	 * @param Vector $path il percorso da creare nella collezione
 	 * @param Vector $leaves Le foglie dei percorsi creati
 	 * @return Vector $roots Le root dei percorsi creati
 	 */
-	public function createPath(Vector $path, Vector& $leaves)
+	public function createPath(Vector $path, Vector& $leaves = Null)
 	{
 		// Cerco le più lunge porzioni di $path che già
 		// esistono nella collezione.
@@ -179,12 +184,12 @@ class Collection extends ModelCollection
 			$root = $pathCopy->shift();
 			$roots = Vector::create($root);
 			$this->add(Array($root))->addBranch($pathCopy, $leafId);
-			$leaves->append($this->find($leafId));
+			if ($leaves) $leaves->append($this->find($leafId));
 		}
 		
 		// Se l'intero path è stato trovato, ritorno
 		// le migliori foglie come leaves
-		else if ($tail->isEmpty())
+		else if ($tail->isEmpty() && $leaves)
 		{
 			$leaves = $bestLeaves;
 		}
@@ -195,7 +200,7 @@ class Collection extends ModelCollection
 			foreach ($bestLeaves as $head) {
 				$leafId = 0;
 				$head->addBranch($tail, $leafId);
-				$leaves->append($this->find($leafId));
+				if ($leaves) $leaves->append($this->find($leafId));
 			}
 			
 			// Se le root coincidono con le leaves, in

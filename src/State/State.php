@@ -34,6 +34,8 @@ class State
 		$this->addAction(Post::create('resource:edit',
 				Array('id', 'link', 'title', 'tags')));
 		$this->addAction(Post::create('resource:delete'));
+		$this->addAction(Post::create('tag:add',
+				Array('name', 'parent')));
 	}
 	
 	private function addAction(Action $action)
@@ -93,6 +95,11 @@ class State
 	public function getResourceDelete()
 	{
 		return $this->actions['resource:delete'];
+	}
+	
+	public function getTagAdd()
+	{
+		return $this->actions['tag:add'];
 	}
 	
 	public function getPost()

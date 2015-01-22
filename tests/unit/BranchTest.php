@@ -200,7 +200,7 @@ class BranchTest extends \Codeception\TestCase\Test
     public function testCreatingPathFromString()
     {
     	$string = 'Null2:Null1:node js, Null3:software development';
-    	$groups = $this->coll->parseTagsNames($string);
+    	$groups = $this->coll->parseTagsString($string);
     	$tags = Vector::create();
     	$roots = Vector::create();
     	$size = $this->coll->getSize();

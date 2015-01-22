@@ -93,6 +93,14 @@ class Vector extends ArrayObject
 		return $output;
 	}
 	
+	public function unshift($value)
+	{
+		$current = $this->getArrayCopy();
+		array_unshift($current, $value);
+		$this->exchangeArray($current);
+		return $this;
+	}
+	
 	public function reverse()
 	{
 		$this->exchangeArray(array_reverse(
