@@ -1,4 +1,6 @@
 <?php
+namespace State;
+
 class Location
 {
 	private $path = null;

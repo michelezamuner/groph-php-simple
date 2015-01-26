@@ -22,6 +22,8 @@ class Name
 	
 	public function __construct($name)
 	{
+		if (empty($name))
+			throw new Exception('Cannot construct Name from empty string');
 		$this->name = self::sanitize($name);
 	}
 	
