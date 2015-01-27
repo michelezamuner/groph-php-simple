@@ -1,6 +1,8 @@
 <?php
 namespace Tag;
 
+use Exception;
+
 class Name
 {
 	public static function create($string)
@@ -39,6 +41,7 @@ class Name
 	
 	public function matches($name)
 	{
+		if (!$name) return False;
 		if (!$name instanceof self)
 			$name = self::create((string)$name);
 		return $this->toNorm() === $name->toNorm();

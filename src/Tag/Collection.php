@@ -50,11 +50,12 @@ class Collection extends ModelCollection
 
 	public function load(Array $seeds)
 	{
-		foreach ($seeds as $childName => $parents) {
+		foreach ($seeds as $childName => $parentName) {
 			$child = $this->findOrAdd(array($childName));
-			foreach ($parents as $parentName) {
-				$this->findOrAdd(array($parentName))->addChild($child)->save();
-			}
+			if ($parentName) $this->findOrAdd(Array($parentName))->addChild($child)->save();
+// 			foreach ($parents as $parentName) {
+// 				$this->findOrAdd(array($parentName))->addChild($child)->save();
+// 			}
 		}
 		return $this;
 	}
