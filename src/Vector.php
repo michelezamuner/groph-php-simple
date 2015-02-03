@@ -10,7 +10,10 @@ class Vector extends ArrayObject
 	
 	public static function explode($delimiter, $string)
 	{
-		return new self(explode($delimiter, $string));
+		return empty($string)
+			? new self()
+			: new self(explode($delimiter, $string));
+// 		return new self(explode($delimiter, $string));
 	}
 	
 	public function get($index)
@@ -21,6 +24,11 @@ class Vector extends ArrayObject
 	public function getFirst()
 	{
 		return $this[0];
+	}
+	
+	public function getLast()
+	{
+		return $this[$this->count() - 1];
 	}
 	
 	public function void()

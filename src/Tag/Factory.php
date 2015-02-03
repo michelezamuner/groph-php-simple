@@ -10,10 +10,11 @@ class Factory extends ModelFactory
 	public function create(Array $attributes)
 	{
 		$name = $attributes[0];
-		$id = isset($attributes[1]) ? $attributes[1] : 0;
+		$id = isset($attributes[1]) ? $attributes[1] : Null;
 		$tag = new Tag($this, $name, $id);
 		foreach ($this->listeners as $listener)
 			$tag->addListener($listener);
+
 		return $tag;
 	}
 

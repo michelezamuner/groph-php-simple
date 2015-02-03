@@ -1,7 +1,7 @@
 <?php
 include 'vendor/autoload.php';
 
-function getTagLinks(Tag\Tag $tag) {
+function getTagLinks(Tag\Tag $tag, $parents = False) {
 	global $state;
 	
 	$search = $state->getSearch()->getParam('query')->getName();
@@ -12,7 +12,10 @@ function getTagLinks(Tag\Tag $tag) {
 		->setParam($select, $tag->getId())
 		->setParam('focus', 'tag')->getUrl();
 	
-	return '<a href="'.$tagLink.'">'.$tag->getName().'</a> <a href="'.
+	$name = $parents
+		? $tag->getUniquePath()->implode(':')
+		: $tag->getName();
+	return '<a href="'.$tagLink.'">'.$name.'</a> <a href="'.
 			$editLink.'">edit</a>';
 }
 
@@ -55,10 +58,16 @@ function getSearchResults() {
 		// Se $term comincia con 'tag:', vuol dire che vogliamo
 		// solo i figli diretti di questa tag.
 		if (preg_match('/^tag:([^:]+)$/', $term, $matches)) {
-			$searchedTag = $tagCollection->findByName($matches[1]);
+			$searchedTag = $tagCollection->find($matches[1]);
 			$matchingRes = $searchedTag ? array_map(function(Resource\Resource $res) {
 				return $res->getId();
 			}, $resCollection->findByTag($searchedTag)) : array();
+			
+		// If an empty string was searched, return all resources
+		} elseif ($term === '') {
+			$matchingRes = array_map(function (Resource\Resource $resource) {
+				return $resource->getId();
+			}, $resCollection->findLike(array($term)));
 		} else {
 			// Trova tutte le tag che corrispondono a questo termine,
 			// compresi tutti i figli
@@ -179,30 +188,13 @@ function prettifyJson($json) {
 function export($file) {
 	global $tagCollection, $resCollection;
 	$tags = array();
-	$getExport = function(Array $tags) use (&$getExport, $tagCollection) {
-		$export = $tags;
-		foreach ($tags as $tag)
-			$export = array_merge($export, $getExport($tag->getChildren()));
-		$tagIds = array_map(function(Tag\Tag $tag) {
-			return $tag->getId();
-		}, $export);
-		return array_map(function($id) use ($tagCollection) {
-			return $tagCollection->find($id);
-		}, array_unique($tagIds));
-	};
-	foreach ($getExport($tagCollection->getRoots()) as $tag) {
-		if (!isset($tags[$tag->getName()])) $tags[$tag->getName()] = array();
-		foreach ($tag->getChildren() as $child) {
-			if (!isset($tags[$child->getName()])) {
-				$tags[$child->getName()] = array($tag->getName());
-			} elseif (!isset($tags[$child->getName()][$tag->getName()])) {
-				$tags[$child->getName()][] = $tag->getName();
-			}
-		}
+	foreach ($tagCollection->findLike(array('')) as $tag) {
+		$parentPath = $tag->getParent()
+			? $tag->getParent()->getUniquePath()->implode(':')
+			: '';
+		$tags[] = array((string)$tag->getName() => $parentPath);
 	}
 	
-	// TODO: Check if this works with:
-	// $res->getTags()->map(function(Tag $tag) { return (string)$tag; });
 	$resources = array();
 	foreach ($resCollection->findLike(array('')) as $res)
 		$resources[$res->getLink()] = array($res->getTitle(),
@@ -287,8 +279,6 @@ try {
 			import('groph.json');
 			break;
 		case $state->getResourceAdd():
-			// TODO: finding tags by name is going not to
-			// be possible any more
 			$add = $state->getResourceAdd();
 			$tags = Vector::create();
 			$tagCollection->createPathsFromString(
@@ -320,18 +310,33 @@ try {
 			break;
 		case $state->getTagEdit():
 			$edit = $state->getTagEdit();
-			echo $edit->getParam('id').'<br>';
-			echo $edit->getParam('name').'<br>';
-			echo $edit->getParam('parent').'<br>';
+			// Try to create parent path, and
+			// check if it has changed.
+			$parents = Vector::create();
+			$tagCollection->createPathsFromString(
+					$edit->getParam('parent'), $parents);
+			if ($parents->count() > 1)
+				throw new Exception('Tags cannot have more than one parent');
+			$parent = $parents->getFirst();
+			$tag = $tagCollection->find($edit->getParam('id'));
+			$tag->setName($edit->getParam('name'))->save();
+			// If it's the same parent, remove the old version
+			// of this child
+			if ($parent->getId() === $tag->getParent()->getId())
+				$parent->removeChild($tag);
+			$parent->addChild($tag)->save();
+			break;
+		case $state->getTagDelete():
+			$state->getSelectedTag()->delete();
 			break;
 		default:
 			break;
 	}
 
-	if (isset($_POST['tag:delete'])) {
-		$tag = $tagCollection->findByName($_GET['tag'])->delete();
-		if ($tag) $tag->delete();
-	}
+// 	if (isset($_POST['tag:delete'])) {
+// 		$tag = $tagCollection->findByName($_GET['tag'])->delete();
+// 		if ($tag) $tag->delete();
+// 	}
 		
 // 	if (isset($_POST['tag:edit']) && $selectedTag) {
 // 		// Se è stato richiesto un cambio di nome e di parents
@@ -457,7 +462,7 @@ try {
 					<?php $edit = $state->getTagEdit(); ?>
 					$('input[name="<?php echo $edit; ?>"]').click(function(event) {
 						var oldName = '<?php echo $selectedTag->getName(); ?>';
-						var oldParent = '<?php echo $selectedTag->getParent()->getName(); ?>';
+						var oldParent = '<?php echo $selectedTag->getParent()->getUniquePath()->implode(':'); ?>';
 						var newName = $('input[name="<?php echo $edit->getParam('name')->getName(); ?>"]').val();
 						var newParent = $('input[name="<?php echo $edit->getParam('parent')->getName(); ?>"]').val();
 						var message = '';
@@ -578,7 +583,8 @@ try {
 					<label>New Tags:</label>
 					<input type="text"
 						name="<?php echo $edit->getParam('tags')->getName(); ?>"
-						value="<?php echo $selectedRes->getTags()->implode(', '); ?>">
+						value="<?php echo $selectedRes->getTags()->map(function(Tag\Tag $tag) {
+							return $tag->getUniquePath()->implode(':'); })->implode(', '); ?>">
 					<input type="submit" name="<?php echo $edit; ?>" value="Edit Resource">
 					<input type="submit" name="<?php echo $delete; ?>" value="Delete Resource">
 				</fieldset>
@@ -600,6 +606,9 @@ try {
 			<form id="tag:edit" method="POST">
 				<fieldset>
 					<legend>Edit Tag <?php echo $selectedTag->getName(); ?></legend>
+					<input type="hidden"
+						name="<?php echo $edit->getParam('id')->getName(); ?>"
+						value="<?php echo $selectedTag->getId(); ?>">
 					<label>New Name:</label>
 					<input type="text"
 						name="<?php echo $edit->getParam('name')->getName(); ?>"
@@ -609,7 +618,7 @@ try {
 					<label>New Parent:</label>
 					<input type="text"
 						name="<?php echo $edit->getParam('parent')->getName(); ?>"
-						value="<?php echo $selectedTag->getParent()->getName(); ?>">
+						value="<?php echo $selectedTag->getParent()->getUniquePath()->implode(':'); ?>">
 					<input type="submit" name="<?php echo $edit; ?>" value="Edit Tag">
 					<input type="submit" name="tag:delete" value="Delete Tag">
 				</fieldset>
@@ -618,7 +627,15 @@ try {
 		<dl id="tree">
 			<?php echo getTreeView($tagCollection->getRoots(), '      '); ?>
 		</dl>
-		<h3><?php echo $state->getSearchQuery(); ?></h3>
+		<?php
+		$name = '';
+		if (preg_match('/^tag:(\d+)$/', $state->getSearchQuery(), $matches)) {
+			$name = $tagCollection->find($matches[1])->getUniquePath()->implode(':');
+		} else {
+			$name = $state->getSearchQuery();
+		}
+		?>
+		<h3><?php echo $name; ?></h3>
 		<ul id="resources">
 			<?php foreach ($searchResults as $res): ?>
 				<li>
@@ -634,7 +651,7 @@ try {
 							->setParam('focus', 'res')->getUrl(); ?>">edit</a>
 					<ul>
 						<?php foreach ($res->getTags() as $tag): ?>
-							<li><?php echo getTagLinks($tag); ?></li>
+							<li><?php echo getTagLinks($tag, true); ?></li>
 						<?php endforeach; ?>
 					</ul>
 				</li>

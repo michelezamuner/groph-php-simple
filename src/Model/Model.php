@@ -1,20 +1,24 @@
 <?php
 namespace Model;
 
+use Exception;
+
 abstract class Model
 {
 	protected $factory = null;
 	protected $logger = null;
 	protected $db = null;
 	protected $collection = null;
-	protected $id = 0;
+	protected $id = Null;
 	protected $changed = true;
 
-	public function __construct(Factory $factory, $id = 0)
+	public function __construct(Factory $factory, $id = Null)
 	{
 		$this->logger = $factory->getLogger();
 		$this->db = $factory->getDb();
 		$this->collection = $factory->getCollection();
+		if (!$this->collection)
+			throw new Exception('Created model with no collection');
 		$this->factory = $factory;
 		$this->id = $id;
 	}

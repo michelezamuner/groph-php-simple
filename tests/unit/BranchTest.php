@@ -41,6 +41,12 @@ class BranchTest extends \Codeception\TestCase\Test
     	$this->assertEquals(1, $results->count());
     	$this->assertEquals('Software Development',
     			$results->getFirst()->getName());
+    	$results = $this->coll->findAll('node js');
+    	$this->assertEquals(2, $results->count());
+    	$first = $results[0]; $second = $results[1];
+    	$this->assertNotEquals($first->getId(), $second->getId());
+    	$this->assertEquals($first->getName()->toNorm(),
+    			$second->getName()->toNorm());
     }
     
     public function testVisitingPathFromTag()
@@ -99,13 +105,12 @@ class BranchTest extends \Codeception\TestCase\Test
     
     public function testMatchingSingleStepExistingPath()
     {
-    	$path = Vector::create('programming languages');
+    	$path = Vector::create('node js');
     	$leaves = Vector::create();
     	$tail = Vector::create();
     	$roots = $this->coll->pathMatch($path, $leaves, $tail);
     	
-    	$tag = $this->coll->findFirst('programming languages');
-    	$expected = Vector::create($tag);
+    	$expected = $this->coll->findAll('node js');
     	$this->assertEquals($expected, $roots);
     	$this->assertEquals($expected, $leaves);
     	$this->assertTrue($tail->isEmpty());
@@ -113,33 +118,28 @@ class BranchTest extends \Codeception\TestCase\Test
     
     public function testMatchingCompletelyExistentPath()
     {
-    	$path = Vector::create('software development',
-    			'programming languages');
+    	$path = Vector::create('task runners', 'gulp');
     	$leaves = Vector::create();
     	$tail = Vector::create();
     	$roots = $this->coll->pathMatch($path, $leaves, $tail);
     	
-    	$expectedRoots = Vector::create($this->coll
-    			->findFirst('software development'));
+    	$expectedRoots = $this->coll->findAll('task runners');
     	$this->assertEquals($roots, $expectedRoots);
     	
-    	$expectedLeaves = Vector::create($this->coll
-    			->findFirst('programming languages'));
+		$expectedLeaves = $this->coll->findAll('gulp');
     	$this->assertEquals($leaves, $expectedLeaves);
     	$this->assertTrue($tail->isEmpty());
     }
     
     public function testMatchingIncompletePath()
     {
-    	$path = Vector::create('javascript', 'node js', 'null1');
+    	$path = Vector::create('task runners', 'grunt', 'null1');
     	$leaves = Vector::create();
     	$tail = Vector::create();
     	$roots = $this->coll->pathMatch($path, $leaves, $tail);
     	
-    	$expectedRoots = Vector::create($this->coll
-    			->findFirst('javascript'));
-    	$expectedLeaves = Vector::create($this->coll
-				->findFirst('node js'));
+    	$expectedRoots = $this->coll->findAll('task runners');
+		$expectedLeaves = $this->coll->findAll('grunt');
     	$expectedTail = Vector::create('null1');
     	
     	$this->assertEquals($expectedRoots, $roots);
@@ -149,18 +149,15 @@ class BranchTest extends \Codeception\TestCase\Test
     
     public function testCreatingCompletelyExistentPath()
     {
-    	$path = Vector::create('interpreted programming languages',
-			'javascript');
+    	$path = Vector::create('task runners', 'gulp');
     	$leaves = Vector::create();
     	$size = $this->coll->getSize();
     	$roots = $this->coll->createPath($path, $leaves);
     	
     	$this->assertEquals($size, $this->coll->getSize());
-    	$expectedLeaves = Vector::create($this->coll
-			->findFirst('javascript'));
+    	$expectedLeaves = $this->coll->findAll('gulp');
     	$this->assertEquals($expectedLeaves, $leaves);
-    	$expectedRoots = Vector::create($this->coll
-			->findFirst('interpreted programming languages'));
+    	$expectedRoots = $this->coll->findAll('task runners');
     	$this->assertEquals($expectedRoots, $roots);
     }
     
@@ -183,18 +180,17 @@ class BranchTest extends \Codeception\TestCase\Test
     
     public function testCreatingIncompletePath()
     {
-    	$path = Vector::create('javascript', 'Null1', 'Null2');
+    	$path = Vector::create('node js', 'Null1', 'Null2');
     	$leaves = Vector::create();
     	$size = $this->coll->getSize();
     	$roots = $this->coll->createPath($path, $leaves);
     	
-    	$expectedRoots = Vector::create($this->coll
-			->findFirst('javascript'));
-    	$expectedLeaves = Vector::create($this->coll
-			->findFirst('null2'));
+    	$expectedRoots = $this->coll->findAll('node js');
+		$expectedLeaves = $this->coll->findAll('null2');
     	$this->assertEquals($expectedRoots, $roots);
     	$this->assertEquals($expectedLeaves, $leaves);
-    	$this->assertEquals($size + 2, $this->coll->getSize());
+    	$expectedSize = $size + $expectedRoots->count() * 2;
+    	$this->assertEquals($expectedSize, $this->coll->getSize());
     }
     
     public function testCreatingPathFromString()
@@ -210,16 +206,48 @@ class BranchTest extends \Codeception\TestCase\Test
     		$tags->merge($leaves);
     	}
     	
-    	$null1 = $this->coll->findFirst('null1');
-    	$null2 = $this->coll->findFirst('null2');
-    	$null3 = $this->coll->findFirst('null3');
-    	$this->assertEquals($size + 3, $this->coll->getSize());
-    	$this->assertEquals(Vector::create($null2, $null3), $tags);
-    	$expectedRoots = Vector::create(
-			$this->coll->findFirst('node js'),
-    		$this->coll->findFirst('software development')
-    	);
+    	$compare = function(Tag $a, Tag $b) {
+    		return $a->getId() - $b->getId(); };
+    	$expectedLeaves = $this->coll->findAll('null2')
+    		->merge($this->coll->findAll('null3'))
+    		->uasort($compare);
+    	$this->assertEquals($expectedLeaves,
+    			$tags->uasort($compare));
+    	$expectedSize = $size
+    		+ $this->coll->findAll('node js')->count() * 2
+    		+ $this->coll->findAll('software development')->count();
+    	$this->assertEquals($expectedSize, $this->coll->getSize());
+		$expectedRoots = $this->coll->findAll('node js')
+			->merge($this->coll->findAll('software development'));
     	$this->assertEquals($expectedRoots, $roots);
-    	$this->assertEquals($null2, $null1->getChild('null2'));
+    	foreach ($this->coll->findAll('null1') as $null1) {
+    		$children = $null1->getChildren();
+    		$child = $children[0];
+    		$this->assertTrue($child->getName()->matches('null2'));
+    	}
+    }
+    
+    public function testFindingTagsByPath()
+    {
+    	$path = Vector::create('task runners', 'gulp');
+    	$results = $this->coll->findByPath($path);
+    	$this->assertEquals(3, $results->count());
+    	foreach($results as $tag) {
+    		$this->assertNotNull($tag->getParent());
+    		$this->assertTrue($tag->getName()->matches('gulp'));
+    		$this->assertTrue($tag->getParent()
+    			->getName()->matches('task runners'));
+    		$grandpa = $tag->getParent()->getParent();
+    		$name = $tag->getParent()->getParent()->getName();
+    		$this->assertTrue($grandpa->getName()->matches('development tools')
+				|| $grandpa->getName()->matches('node js'));
+    		if ($grandpa->getName()->matches('node js')) {
+    			$ggp = $grandpa->getParent();
+    			$this->assertTrue($ggp->getName()->matches('javascript')
+					|| $ggp->getName()->matches('asynchronous event-driven programming'));
+    		} else {
+    			$this->assertEquals($grandpa, $this->coll->findFirst('development tools'));
+    		}
+    	}
     }
 }

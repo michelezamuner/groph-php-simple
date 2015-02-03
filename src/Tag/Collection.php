@@ -25,17 +25,18 @@ class Collection extends ModelCollection
 				function($name) { return Name::create($name); });
 	}
 	
-	private $parentsIndex = array();
-
+// 	private $parentsIndex = array();
+	private $cache = array();
+	
 	public function __construct(Factory $factory)
 	{
 		parent::__construct($factory);
-		foreach ($this->db->select('child, parent', $this->relationsTable, '') as $row) {
-			if (!isset($this->parentsIndex[$row['child']]))
-				$this->parentsIndex[$row['child']] = array($row['parent']);
-			else
-				$this->parentsIndex[$row['child']][] = $row['parent'];
-		}
+// 		foreach ($this->db->select('child, parent', $this->relationsTable, '') as $row) {
+// 			if (!isset($this->parentsIndex[$row['child']]))
+// 				$this->parentsIndex[$row['child']] = array($row['parent']);
+// 			else
+// 				$this->parentsIndex[$row['child']][] = $row['parent'];
+// 		}
 	}
 
 	public function getMainTable()
@@ -50,12 +51,29 @@ class Collection extends ModelCollection
 
 	public function load(Array $seeds)
 	{
-		foreach ($seeds as $childName => $parentName) {
-			$child = $this->findOrAdd(array($childName));
-			if ($parentName) $this->findOrAdd(Array($parentName))->addChild($child)->save();
-// 			foreach ($parents as $parentName) {
-// 				$this->findOrAdd(array($parentName))->addChild($child)->save();
+		foreach ($seeds as $seed) {
+			foreach ($seed as $childName => $parentGroup) {
+				$path = Vector::create(Name::create($childName))
+					->merge(self::parseTagsGroup($parentGroup))
+					->reverse();
+				$this->createPath($path);
+			}
+			
+			
+// 			$child = $this->findOrAdd(array($childName));
+// 			if ($parentGroup) {
+// 				$path = self::parseTagsGroup($parentGroup)
+// 					->reverse();
+// 				$parents = $this->findByPath($path);
+// 				if ($parents->isEmpty())
+// 					$this->createPath($path, $parents);
+// 				foreach ($parents as $parent)
+// 					$parent->addChild($child)->save();
+// 			} else {
+// 				$child = $this->findOrAdd(array($childName));
+				
 // 			}
+// 			if ($parentName) $this->findOrAdd(Array($parentName))->addChild($child)->save();
 		}
 		return $this;
 	}
@@ -93,6 +111,27 @@ class Collection extends ModelCollection
 	{
 		return $this->findAll($name)->getFirst();
 	}
+	
+	public function findByPath(Vector $path)
+	{
+		$result = Vector::create();
+		$leaves = Vector::create();
+		$this->pathMatch($path, $leaves);
+		// pathMatch finds only the best matches, so
+		// all leaves have the same name, so if the
+		// first leaf has the correct name (the last
+		// path's step), all leaves are acceptable.
+		if ($leaves->count() && $leaves->getFirst()->getName()->matches($path->getLast()))
+			$result = $leaves;
+		return $result;
+	}
+	
+	public function add(Array $attributes)
+	{
+		$tag = parent::add($attributes);
+		$this->cache[$tag->getId()] = $tag;
+		return $tag;
+	}
 
 	public function getRoots()
 	{
@@ -103,29 +142,37 @@ class Collection extends ModelCollection
 		return $this->getSelect($columns, $table, $where);
 	}
 	
-	public function indexParent(Tag $child, Tag $parent)
+	/*public function indexParent(Tag $child, Tag $parent)
 	{
-		if (!isset($this->parentsIndex[$child->getId()]))
-			$this->parentsIndex[$child->getId()] = array($parent->getId());
-		else if (!in_array($parent->getId(), $this->parentsIndex[$child->getId()]))
-			$this->parentsIndex[$child->getId()][] = $parent->getId();
+		echo "Adding parent $parent to tag $child\n";
+		$this->parentsIndex[$child->getId()] = $parent->getId();
+		var_dump($this->parentsIndex);
+// 		if (!isset($this->parentsIndex[$child->getId()]))
+// 			$this->parentsIndex[$child->getId()] = array($parent->getId());
+// 		else if (!in_array($parent->getId(), $this->parentsIndex[$child->getId()]))
+// 			$this->parentsIndex[$child->getId()][] = $parent->getId();
 	}
 	
 	public function unIndexParent(Tag $child, Tag $parent)
 	{
-		$index = array_search($parent->getId(), $this->parentsIndex[$child->getId()]);
-		unset($this->parentsIndex[$child->getId()][$index]);
+		unset($this->parentsIndex[$child->getId()]);
+// 		$index = array_search($parent->getId(), $this->parentsIndex[$child->getId()]);
+// 		unset($this->parentsIndex[$child->getId()][$index]);
 	}
 	
 	public function getIndexParents(Tag $child)
 	{
-		$self = $this;
 		return isset($this->parentsIndex[$child->getId()])
-		? array_map(function($id) use ($self) {
-			return $self->find($id);
-		}, $this->parentsIndex[$child->getId()])
-		: array();
-	}
+			? $this->find($this->parentsIndex[$child->getId()])
+			: Null;
+// 		if (!$child->getId()) return array();
+// 		$self = $this;
+// 		return isset($this->parentsIndex[$child->getId()])
+// 			? array_map(function($id) use ($self) {
+// 				return $self->find($id);
+// 			}, $this->parentsIndex[$child->getId()])
+// 			: array();
+	}*/
 	
 	public function createPathsFromString($string, Vector& $leaves)
 	{
@@ -279,22 +326,26 @@ class Collection extends ModelCollection
 
 	protected function loadById($id)
 	{
+		$id = (int)"$id";
+		if (isset($this->cache[$id])) return $this->cache[$id];
 		$tag = $this->factory->create(array($this->db->selectFirst(
 				'name', $this->mainTable, "id = $id")->name, $id));
 
-		$columns = 'r.child, t.name';
-		$table = "$this->relationsTable r LEFT JOIN $this->mainTable t
-		ON t.id = r.child";
-		$where = "r.parent = $id ORDER BY t.name ASC";
-		foreach ($this->db->select($columns, $table, $where) as $row)
-			$tag->addChild($this->loadById($row[0]));
+// 		$columns = 'r.child, t.name';
+// 		$table = "$this->relationsTable r LEFT JOIN $this->mainTable t
+// 		ON t.id = r.child";
+// 		$where = "r.parent = $id ORDER BY t.name ASC";
+// 		foreach ($this->db->select($columns, $table, $where) as $row)
+// 			$tag->addChild($this->loadById($row[0]));
+		$this->cache[$id] = $tag;
 
 		return $tag;
 }
 
 	protected function createTables()
 	{
-		$this->db->createTable($this->mainTable, 'name TEXT UNIQUE NOT NULL');
+// 		$this->db->createTable($this->mainTable, 'name TEXT UNIQUE NOT NULL');
+		$this->db->createTable($this->mainTable, 'name TEXT NOT NULL');
 		$this->db->createTable($this->relationsTable,
 					'child INTEGER NOT NULL, parent INTEGER NOT NULL');
 		return $this;

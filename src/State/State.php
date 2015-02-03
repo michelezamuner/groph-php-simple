@@ -50,6 +50,8 @@ class State
 				Array('id')));
 		$this->addAction(Post::create('tag:edit',
 				Array('id', 'name', 'parent')));
+		$this->addAction(Post::create('tag:delete',
+				Array('id')));
 	}
 	
 	public function getLocation()
@@ -130,6 +132,11 @@ class State
 	public function getTagEdit()
 	{
 		return $this->actions['tag:edit'];
+	}
+	
+	public function getTagDelete()
+	{
+		return $this->actions['tag:delete'];
 	}
 	
 	public function getPost()

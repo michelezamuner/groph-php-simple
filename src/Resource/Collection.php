@@ -5,6 +5,7 @@ use Model\Collection as ModelCollection;
 use Tag\Tag;
 use Tag\Listener;
 use Tag\Factory as TagFactory;
+use Vector;
 
 class Collection extends ModelCollection implements Listener
 {
@@ -37,10 +38,13 @@ class Collection extends ModelCollection implements Listener
 	{
 		$tagCollection = $this->tagFactory->getCollection();
 		foreach ($seeds as $link => $attributes) {
-			$tags = array_map(function($tagName) use ($tagCollection) {
-				return $tagCollection->findByName($tagName);
-			}, $attributes[1]);
-			$res = $this->findOrAdd(array($link, $attributes[0], $tags));
+			$tags = Vector::create();
+			foreach($attributes[1] as $tagName)
+				$tags->merge($tagCollection->findAll($tagName));
+// 			$tags = array_map(function($tagName) use ($tagCollection) {
+// 				return $tagCollection->findByName($tagName);
+// 			}, $attributes[1]);
+			$res = $this->findOrAdd(array($link, $attributes[0], (Array)$tags));
 		}
 	}
 
