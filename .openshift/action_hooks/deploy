@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+cd $OPENSHIFT_HOMEDIR/app-root/runtime/repo
+./composer.phar update
