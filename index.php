@@ -250,6 +250,18 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 
 try {
 	$conf = include('configuration.php');
+	
+	if (!isset($_SERVER['PHP_AUTH_USER'])) {
+		header('WWW-Authenticate: Basic realm="SlothCompany Groph"');
+		header('HTTP/1.0 401 Unauthorized');
+		echo 'Not Authorized';
+		exit;
+	} else {
+		if ($_SERVER['PHP_AUTH_USER'] !== $conf['user']
+			|| $_SERVER['PHP_AUTH_PW'] !== $conf['pwd'])
+			exit('Not Authorized');
+	}
+	
 	$logger = new Logger('groph.log');
 	$database = new Database($conf['db'], $logger);
 	$tagFactory = new Tag\Factory($database, $logger);
