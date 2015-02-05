@@ -1,2 +1,4 @@
 /groph.json
-/configuration-local.php
+/configuration.php
+tests/_output/*
+!.openshift/
