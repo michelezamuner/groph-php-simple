@@ -222,14 +222,16 @@ function printTrace(Array $trace, $sep = PHP_EOL) {
 		$class = isset($call['class']) ? $call['class'] : '';
 		$type = isset($call['type']) ? $call['type'] : '';
 		$function = isset($call['function']) ? $call['function'] : '';
-		$args = implode(', ', array_map(function($arg) {
-			if (is_object($arg))
-				return get_class($arg);
-			else if (is_array($arg))
-				return 'Array';
-			else
-				return (string)$arg;
-		}, $call['args']));
+		$args = isset($call['args'])
+			? implode(', ', array_map(function($arg) {
+				if (is_object($arg))
+					return get_class($arg);
+				else if (is_array($arg))
+					return 'Array';
+				else
+					return (string)$arg;
+			}, $call['args']))
+			: '';
 		$string .= "#$id [$file($line): $class$type$function($args)$sep";
 	}
 	return $string;
