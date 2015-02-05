@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
 cd $OPENSHIFT_HOMEDIR/app-root/runtime/repo
-./composer.phar update
+# Create links
+ln -s ../data/configuration.php .
+ln -s ../data/errors.log .
+ln -s ../data/groph-singleparent.sqlite .
+../data/composer.phar install
