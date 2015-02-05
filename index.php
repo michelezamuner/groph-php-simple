@@ -454,7 +454,6 @@ try {
 				if ($state->getResourceAddPrefill()->getIsSet()) {
 					$add = $state->getResourceAdd();
 					$prefill = $state->getResourceAddPrefill(); ?>
-					$('input[name="<?php echo $add->getParam('tags')->getName(); ?>"]').focus();
 					$('input[name="<?php echo $add?>"]').click(function(event) {
 						event.preventDefault();
 						<?php $url = $state->getLocation()
@@ -554,7 +553,8 @@ try {
 				<input type="text"
 						name="<?php echo $state->getSearch()->getParam('query')->getName(); ?>"
 						value="<?php echo $state->getSearchQuery(); ?>"
-						<?php if (!$state->getLocation()->getParam('focus')):?>
+						<?php if (!$state->getLocation()->getParam('focus')
+								&& !$state->getResourceAddPrefill()->getIsSet()):?>
 							autofocus<?php endif;?>>
 				<input type="submit" name="<?php echo $state->getSearch(); ?>" value="Search">
 			</fieldset>
@@ -571,7 +571,9 @@ try {
 				<input type="text" name="<?php echo $add->getParam('title')->getName(); ?>"
 						value="<?php echo $prefill->getParam('title'); ?>">
 				<label >Tags</label>
-				<input type="text" name="<?php echo $add->getParam('tags')->getName(); ?>">
+				<input type="text" name="<?php echo $add->getParam('tags')->getName(); ?>"
+					<?php if ($state->getResourceAddPrefill()->getIsSet()): ?>
+					autofocus<?php endif; ?>>
 				<input type="submit" name="<?php echo $add; ?>" value="Add Resource">
 			</fieldset>
 		</form>
