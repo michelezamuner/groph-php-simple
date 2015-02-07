@@ -189,6 +189,7 @@ function export($file) {
 	global $tagCollection, $resCollection;
 	$tags = array();
 	foreach ($tagCollection->findLike(array('')) as $tag) {
+		echo "Tag: $tag, parent: ".$tag->getParent().'<br>';
 		$parentPath = $tag->getParent()
 			? $tag->getParent()->getUniquePath()->implode(':')
 			: '';
@@ -324,8 +325,22 @@ try {
 			break;
 		case $state->getTagEdit():
 			$edit = $state->getTagEdit();
+			$newParent = $edit->getParam('parent');
+			$newName = $edit->getParam('name');
+			// Check parent's format
+			if (!$tagCollection->isSingleGroup($newParent))
+				throw new Exception('Tags can only have one parent');
 			$tag = $tagCollection->find($edit->getParam('id'));
-			$tag->setName($edit->getParam('name'))->save();
+			// If parent already exists, check if it already has a
+			// child with the given name
+			$results = $tagCollection->findByPath(
+				$tagCollection->parseTagsGroup($newParent)->reverse());
+			$existingParent = $results->count()
+				? $results->getFirst() : Null;
+			if ($existingParent && in_array($newName,
+					array_map(function(Tag\Tag $tag) { return "$tag"; },
+						$existingParent->getChildren())))
+				throw new Exception("Tag $existingParent already has a child named $newName");
 			// Try to create parent path, and
 			// check if it has changed.
 			$parents = Vector::create();
@@ -343,6 +358,7 @@ try {
 			} else if ($tag->getParent()) {
 				$tag->getParent()->removeChild($tag)->save();
 			}
+			$tag->setName($edit->getParam('name'))->save();
 			break;
 		case $state->getTagDelete():
 			$state->getSelectedTag()->delete();

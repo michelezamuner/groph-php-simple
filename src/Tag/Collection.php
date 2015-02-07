@@ -19,8 +19,21 @@ class Collection extends ModelCollection
 			});
 	}
 	
+	/**
+	 * Check if the given string refers to a single
+	 * tags group, as "tag1:tag2:tag3", whereas multiple
+	 * tags groups would be "tag1:tag2, tagA:tagB"
+	 * @param unknown $string
+	 */
+	public static function isSingleGroup($string)
+	{
+		return strpos($string, ',') === false;
+	}
+	
 	public static function parseTagsGroup($group)
 	{
+		if (!self::isSingleGroup($group))
+			throw new Exception("'$group' does not contain a single tags group");
 		return Vector::explode(':', $group)->map(
 				function($name) { return Name::create($name); });
 	}
@@ -294,7 +307,7 @@ class Collection extends ModelCollection
 		$roots = Vector::create();
 	
 		$pathCopy = $path->copy();
-		foreach ($this->findAll($pathCopy->shift()) as $tag) {
+		foreach ($this->findAll($pathCopy->shift()) as $tag) { 
 			/**
 			 * @var Integer $score Quanti passi sono stati
 			 * fatti all'interno di questo branch. Parte da 1
