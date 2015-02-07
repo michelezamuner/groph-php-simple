@@ -1,4 +1,4 @@
 /groph.json
 /configuration.php
-tests/_output/*
-!.openshift/
+/tests/_output/*
+!/.openshift/
