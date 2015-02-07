@@ -324,6 +324,8 @@ try {
 			break;
 		case $state->getTagEdit():
 			$edit = $state->getTagEdit();
+			$tag = $tagCollection->find($edit->getParam('id'));
+			$tag->setName($edit->getParam('name'))->save();
 			// Try to create parent path, and
 			// check if it has changed.
 			$parents = Vector::create();
@@ -331,14 +333,16 @@ try {
 					$edit->getParam('parent'), $parents);
 			if ($parents->count() > 1)
 				throw new Exception('Tags cannot have more than one parent');
-			$parent = $parents->getFirst();
-			$tag = $tagCollection->find($edit->getParam('id'));
-			$tag->setName($edit->getParam('name'))->save();
-			// If it's the same parent, remove the old version
-			// of this child
-			if ($tag->getParent() && $parent->getId() === $tag->getParent()->getId())
-				$parent->removeChild($tag);
-			$parent->addChild($tag)->save();
+			if ($parents->count() > 0) {
+				$parent = $parents->getFirst();
+				// If it's the same parent, remove the old version
+				// of this child
+				if ($tag->getParent() && $parent->getId() === $tag->getParent()->getId())
+					$parent->removeChild($tag);
+				$parent->addChild($tag)->save();
+			} else if ($tag->getParent()) {
+				$tag->getParent()->removeChild($tag)->save();
+			}
 			break;
 		case $state->getTagDelete():
 			$state->getSelectedTag()->delete();
