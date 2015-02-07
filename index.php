@@ -475,7 +475,8 @@ try {
 					<?php $edit = $state->getTagEdit(); ?>
 					$('input[name="<?php echo $edit; ?>"]').click(function(event) {
 						var oldName = '<?php echo $selectedTag->getName(); ?>';
-						var oldParent = '<?php echo $selectedTag->getParent()->getUniquePath()->implode(':'); ?>';
+						var oldParent = '<?php echo $selectedTag->getParent() ?
+							$selectedTag->getParent()->getUniquePath()->implode(':') : ''; ?>';
 						var newName = $('input[name="<?php echo $edit->getParam('name')->getName(); ?>"]').val();
 						var newParent = $('input[name="<?php echo $edit->getParam('parent')->getName(); ?>"]').val();
 						var message = '';
@@ -634,7 +635,8 @@ try {
 					<label>New Parent:</label>
 					<input type="text"
 						name="<?php echo $edit->getParam('parent')->getName(); ?>"
-						value="<?php echo $selectedTag->getParent()->getUniquePath()->implode(':'); ?>">
+						value="<?php echo $selectedTag->getParent() ?
+							$selectedTag->getParent()->getUniquePath()->implode(':') : ''; ?>">
 					<input type="submit" name="<?php echo $edit; ?>" value="Edit Tag">
 					<input type="submit" name="tag:delete" value="Delete Tag">
 				</fieldset>
