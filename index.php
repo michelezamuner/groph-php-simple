@@ -336,7 +336,7 @@ try {
 			$tag->setName($edit->getParam('name'))->save();
 			// If it's the same parent, remove the old version
 			// of this child
-			if ($parent->getId() === $tag->getParent()->getId())
+			if ($tag->getParent() && $parent->getId() === $tag->getParent()->getId())
 				$parent->removeChild($tag);
 			$parent->addChild($tag)->save();
 			break;
