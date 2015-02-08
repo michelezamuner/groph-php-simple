@@ -319,8 +319,8 @@ try {
 		case $state->getTagAdd():
 			$name = $state->getTagAdd()->getParam('name');
 			$parent = $state->getTagAdd()->getParam('parent');
-			$path = $tagCollection->parseTagsGroup($parent)
-				->unshift($name);
+			$path = $tagCollection->parseTagsGroup("$parent")
+				->unshift("$name");
 			$tagCollection->createPath($path->reverse());
 			break;
 		case $state->getTagEdit():
