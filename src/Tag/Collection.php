@@ -250,8 +250,7 @@ class Collection extends ModelCollection
 		
 		// Se l'intero path è stato trovato, ritorno
 		// le migliori foglie come leaves
-		else if ($tail->isEmpty() && $leaves)
-		{
+		else if ($tail->isEmpty() && $leaves) {
 			$leaves = $bestLeaves;
 		}
 	

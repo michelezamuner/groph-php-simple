@@ -297,9 +297,9 @@ try {
 			$add = $state->getResourceAdd();
 			$tags = Vector::create();
 			$tagCollection->createPathsFromString(
-					$add->getParam('tags'), $tags);
+					(string)$add->getParam('tags'), $tags);
 			$resCollection->add(array($add->getParam('link'),
-					$add->getParam('title'), (array)$tags));
+					(string)$add->getParam('title'), (array)$tags));
 			break;
 		case $state->getResourceEdit():
 			$edit = $state->getResourceEdit();

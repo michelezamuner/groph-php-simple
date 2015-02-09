@@ -249,9 +249,12 @@ class Tag extends Model
 	 * nomi passati, e lo aggiunge sotto la Tag corrente.
 	 * Opzionalmente, ritorna nel parametro passato per
 	 * riferimento l'id dell'ultima tag del ramo creata.
+	 * Se viene passato un Vector vuoto (quindi non viene
+	 * aggiunta nessuna tag), per coerenza $leafId contiene
+	 * l'id della tag corrente.
 	 * @param Vector $names
 	 */
-	public function addBranch(Vector $names, & $leafId = Null)
+	public function addBranch(Vector $names, &$leafId = Null)
 	{
 		$parent = $this;
 		$child = Null;
@@ -261,8 +264,8 @@ class Tag extends Model
 			$parent = $child;
 		}
 		
-		if ($leafId !== Null && $child !== Null)
-			$leafId = $child->getId();
+		if ($leafId !== Null)
+			$leafId = $child === Null ? $this->id : $child->getId();
 		
 		return $this;
 	}
