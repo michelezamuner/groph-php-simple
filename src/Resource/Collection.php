@@ -57,9 +57,9 @@ class Collection extends ModelCollection implements Listener
 
 	public function findLike(Array $attributes)
 	{
-		$link = $attributes[0];
+		$term = $attributes[0];
 		return $this->getSelect('id', $this->mainTable,
-				"link LIKE '%$link%' COLLATE NOCASE");
+				"link LIKE '%$term%' OR title LIKE '%$term%' COLLATE NOCASE");
 	}
 
 	public function findByTag(Tag $tag)

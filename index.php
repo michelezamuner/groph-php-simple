@@ -15,8 +15,15 @@ function getTagLinks(Tag\Tag $tag, $parents = False) {
 	$name = $parents
 		? $tag->getUniquePath()->implode(':')
 		: $tag->getName();
-	return '<a href="'.$tagLink.'">'.$name.'</a> <a href="'.
-			$editLink.'">edit</a>';
+	return <<<RET
+<a href="$tagLink">$name</a>&nbsp;<a href="$editLink">edit</a>
+<form method="POST" style="display: inline-block;">
+	<input type="hidden"
+		name="{$state->getTagDelete()->getParam('id')->getName()}"
+		value="{$tag->getId()}">
+	<input type="submit" name="{$state->getTagDelete()}" value="Delete">
+</form>
+RET;
 }
 
 function getTreeView(Array $roots, $ind) {
@@ -33,8 +40,7 @@ function getTreeView(Array $roots, $ind) {
 }
 
 function getSearchResults() {
-	global $state;
-	global $tagCollection, $resCollection/*, $searchQuery*/;
+	global $state, $tagCollection, $resCollection;
 	$results = array();
 	$searchTerms = array();
 	if ($state->getSearchQuery()) {
@@ -97,6 +103,14 @@ function getSearchResults() {
 					return $res->getId();
 				}, $resCollection->findByTag($tag)));
 			}
+			
+			// Qui $matchingRes contiene le risorse corrispondenti
+			// alle tag associate alla keyword corrente $term.
+			// Ora cerca $term anche tra i nomi e i link delle
+			// risorse.
+			$matchingRes = array_merge($matchingRes, array_map(function(Resource\Resource $res) {
+				return $res->getId();
+			}, $resCollection->findLike(array($term))));
 		}
 		
 		$intersect = empty($intersect)
@@ -205,16 +219,6 @@ function export($file) {
 	))));
 }
 
-// function getTagWithDescendants(Array $tagsNames) {
-// 	global $tagCollection;
-// 	$tag = $tagCollection->findOrAdd(array($tagsNames[0]));
-// 	if (count($tagsNames) > 1) {
-// 		array_shift($tagsNames);
-// 		$tag->addChild(getTagWithDescendants($tagsNames))->save();
-// 	}
-// 	return $tag;
-// }
-
 function printTrace(Array $trace, $sep = PHP_EOL) {
 	$string = '';
 	foreach ($trace as $id => $call) {
@@ -253,18 +257,7 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 
 try {
 	$conf = include('configuration.php');
-	
-// 	if (!isset($_SERVER['PHP_AUTH_USER'])) {
-// 		header('WWW-Authenticate: Basic realm="SlothCompany Groph"');
-// 		header('HTTP/1.0 401 Unauthorized');
-// 		echo 'Not Authorized';
-// 		exit;
-// 	} else {
-// 		if ($_SERVER['PHP_AUTH_USER'] !== $conf['user']
-// 			|| $_SERVER['PHP_AUTH_PW'] !== $conf['pwd'])
-// 			exit('Not Authorized');
-// 	}
-	
+		
 	$logger = new Logger('groph.log');
 	$database = new Database($conf['db'], $logger);
 	$tagFactory = new Tag\Factory($database, $logger);
@@ -361,95 +354,16 @@ try {
 			$tag->setName($edit->getParam('name'))->save();
 			break;
 		case $state->getTagDelete():
-			$state->getSelectedTag()->delete();
+			$id = $state->getTagDelete()->getParam('id');
+			$id = (int)"$id";
+			if (empty($id)) $id = $state->getSelectedTag()->getId();
+			if (empty($id))
+				throw new Exception('Missing tag id');
+			$tagCollection->find("$id")->delete();
 			break;
 		default:
 			break;
 	}
-
-// 	if (isset($_POST['tag:delete'])) {
-// 		$tag = $tagCollection->findByName($_GET['tag'])->delete();
-// 		if ($tag) $tag->delete();
-// 	}
-		
-// 	if (isset($_POST['tag:edit']) && $selectedTag) {
-// 		// Se è stato richiesto un cambio di nome e di parents
-// 		// contemporaneamente, prima cambiamo il nome, con tutto
-// 		// quello che comporta, e poi, dalla nuova situazione,
-// 		// cambiamo i parents
-		
-// 		$selectedTagObject = $tagCollection->findByName($selectedTag);
-// 		$newName = $_POST['tag:edit:name'];
-// 		if ($newName !== $selectedTag) {
-// 			$tag = $tagCollection->findByName($newName);
-// 			// Se non esistono tag con il nuovo nome, semplicemente
-// 			// rinomina la tag corrente
-// 			if (!$tag) {
-// 				$selectedTagObject->setName($newName)->save();
-// 			}
-// 			// La tag trovata potrebbe essere la stessa selected tag
-// 			// nel caso in cui uno abbia cambiato il case del nome
-// 			else if ($tag->getId() === $selectedTagObject->getId()) {
-// 				$tag->setName($newName)->save();
-// 			}
-// 			// Altrimenti, bisogna spostare tutti i child e le risorse
-// 			// della tag corrente nell'altra, ed eliminare la tag corrente
-// 			else {
-// 				foreach ($selectedTagObject->getChildren() as $child)
-// 					$tag->addChild($child)->save();
-// 				foreach ($resCollection->findByTag($selectedTagObject) as $resource)
-// 					$resource->addTag($tag)->save();
-// 				$selectedTagObject->delete();
-// 				$selectedTagObject = $tag;
-// 			}
-			
-// 			// Una volta cambiato nome, nella query string è rimasto
-// 			// tag: con il nome vecchio, quindi se io facessi subito change
-// 			// parents, avrei un errore, perché al ricaricamento della
-// 			// pagina si cercherebbe di ripristinare la tag col nome vecchio.
-// 			// In questo modo invece sparisce il form di edit tag, e uno deve
-// 			// ricliccare, aggiornando la query tag:.
-// 			$selectedTag = null;
-// 		}
-		
-// 		$realParents = array_map(function(Tag\Tag $tag) {
-// 			return $tag->getName();
-// 		}, $selectedTagObject->getParents());
-// 		$parentsNames = preg_replace('/,\s+\s+/', ',', $_POST['tag:edit:parents']);
-// 		$parentsNames = empty($parentsNames)
-// 				? array() : explode(',', $parentsNames);
-		
-// 		// Rimuovi i parent che non sono più nella lista di parents
-// 		foreach ($realParents as $parentName) {
-// 			if (!in_array($parentName, $parentsNames)) {
-// 				$parent = $tagCollection->findByName($parentName);
-// 				$parent->removeChild($selectedTagObject)->save();
-// 			}
-// 		}
-		
-// 		foreach ($parentsNames as $parentName) {
-// 			$parents = explode(':', $parentName);
-// 			$parent = $tagCollection->findByName($parents[0]);
-// 			// Se il parent non esiste, oppure se la tag selezionata non
-// 			// è già figlia di quel parent, aggiungi quel parent
-// 			if ($parent) {
-// 				$children = array_map(function(Tag\Tag $tag) {
-// 					return $tag->getId();
-// 				}, $parent->getChildren());
-// 			}
-// 			if (!$parent || !in_array($selectedTagObject->getId(), $children)) {
-// 				getTagWithDescendants(array_reverse($parents));
-// 				$tagCollection->findByName($parents[0])
-// 					->addChild($selectedTagObject)
-// 					->save();
-// 			}
-// 		}
-		
-// 		// Aggiorno $searchParents
-// 		$searchParents = implode(',', array_map(function(Tag\Tag $tag) {
-// 			return $tag->getName();
-// 		}, $selectedTagObject->getParents()));
-// 	}
 			
 	if (isset($_GET['ajax'])) exit('success');
 	
@@ -516,12 +430,20 @@ try {
 						if (message === '' || !answer)
 							event.preventDefault();
 					});
+				<?php endif; ?>
 					$('input[name="tag:delete"]').click(function(event) {
-						var answer = confirm('Deleting tag ' + '<?php echo $selectedTag->getName(); ?>. Continue?');
+						var id = $(this).parent().find('input[type="hidden"]').val();
+						var tag = '';
+						<?php if ($selectedTag): ?>
+						if (parseInt(id) === <?php echo $selectedTag->getId(); ?>)
+							tag = '<?php echo $selectedTag->getName(); ?>';
+						else
+						<?php endif; ?>
+							tag = $(this).closest('dt').find('a:first-child').text();
+						var answer = confirm('Deleting tag ' + tag + '. Continue?');
 						if (!answer)
 							event.preventDefault();
 					});
-				<?php endif; ?>
 				<?php if ($selectedRes): ?>
 					<?php $edit = $state->getResourceEdit(); ?>
 					$('input[name="<?php echo $edit; ?>"]').click(function(event) {
