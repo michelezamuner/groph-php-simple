@@ -386,6 +386,12 @@ try {
 	<head>
 		<title>Groph</title>
 		<meta charset="utf-8">
+		<style>
+		@media (min-width: 768px) {
+			#tree { width: 30%; float: left; }
+			#resources { width: 65%; float: right; }
+		}
+		</style>
 		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 		<script>
 			$(function() {
@@ -531,6 +537,8 @@ try {
 		</script>
 	</head>
 	<body>
+		<?php $quickLinkUrl = 'javascript:(function()%7Bvar%20a%3Dwindow,b%3Ddocument,c%3DencodeURIComponent,d%3Da.open("http://'.$_SERVER['HTTP_HOST'].$state->getLocation()->getPath().'%3Fresource%3Aadd%3Aprefill%3Alink%3D"%2Bc(b.location)%2B"%26resource%3Aadd%3Aprefill%3Atitle%3D"%2Bc(b.title),"groph_popup","left%3D"%2B((a.screenX%7C%7Ca.screenLeft)%2B10)%2B",top%3D"%2B((a.screenY%7C%7Ca.screenTop)%2B10)%2B",height%3D420px,width%3D550px,resizable%3D1,alwaysRaised%3D1,scrollbars%3D1")%3Ba.setTimeout(function()%7Bd.focus()%7D,300)%7D)()%3B'; ?>
+		<label>Quick link url: <input type="text" readonly="readonly" value='<?php echo $quickLinkUrl; ?>'></label>
 		<form id="manage" method="POST" enctype="multipart/form-data">
 			<input type="submit" name="<?php echo $state->getExport(); ?>" value="Export">
 			<label>File</label>
@@ -631,9 +639,9 @@ try {
 				</fieldset>
 			</form>
 		<?php endif; ?>
-		<!--<div id="tree">-->
+		<div id="tree">
 			<?php echo getTreeView($tagCollection->getRoots(), '      '); ?>
-		<!--</div>-->
+		</div>
 		<?php
 		$name = '';
 		if (preg_match('/^tag:(\d+)$/', $state->getSearchQuery(), $matches)) {
@@ -642,36 +650,37 @@ try {
 			$name = $state->getSearchQuery();
 		}
 		?>
-		<h3><?php echo $name; ?></h3>
-		<ul id="resources">
-			<?php foreach ($searchResults as $res): ?>
-				<li>
-					<?php if (preg_match('/^https?:\/\/(www\.)?[^\.\/]+\.[^\.\/]/', $res->getLink())): ?>
-						<h4><a href="<?php echo $res->getLink(); ?>" target="_blank">
-						<?php echo $res->getTitle(); ?></a></h4>
-					<?php else: ?>
-						<h4><?php echo $res->getTitle(); ?></h4>
-						<p><?php echo $res->getLink(); ?></p>
-					<?php endif; ?>
-					<a href="<?php echo $state->getLocation()->getClone()
-							->setParam($state->getResourceSelect()->getParam('id')->getName(), $res->getId())
-							->setParam('focus', 'res')->getUrl(); ?>">edit</a>
-					<form method="POST" style="display: inline-block;">
-						<?php $delete = $state->getResourceDelete(); ?>
-						<input type="hidden"
-							name="<?php echo $delete->getParam('id')->getName(); ?>"
-							value="<?php echo $res->getId(); ?>">
-						<input type="submit" name="<?php echo $delete; ?>" value="Delete">
-					</form>
-					<ul>
-						<?php foreach ($res->getTags() as $tag): ?>
-							<li><?php echo getTagLinks($tag, true); ?></li>
-						<?php endforeach; ?>
-					</ul>
-				</li>
-			<?php endforeach; ?>
-		</ul>
-		<p>Quick link url: javascript:(function()%7Bvar%20a%3Dwindow,b%3Ddocument,c%3DencodeURIComponent,d%3Da.open("http://<?php echo $_SERVER['HTTP_HOST'].$state->getLocation()->getPath(); ?>%3Fresource%3Aadd%3Aprefill%3Alink%3D"%2Bc(b.location)%2B"%26resource%3Aadd%3Aprefill%3Atitle%3D"%2Bc(b.title),"groph_popup","left%3D"%2B((a.screenX%7C%7Ca.screenLeft)%2B10)%2B",top%3D"%2B((a.screenY%7C%7Ca.screenTop)%2B10)%2B",height%3D420px,width%3D550px,resizable%3D1,alwaysRaised%3D1,scrollbars%3D1")%3Ba.setTimeout(function()%7Bd.focus()%7D,300)%7D)()%3B</p>
+		<div id="resources">
+			<h3><?php echo $name; ?></h3>
+			<ul>
+				<?php foreach ($searchResults as $res): ?>
+					<li>
+						<?php if (preg_match('/^https?:\/\/(www\.)?[^\.\/]+\.[^\.\/]/', $res->getLink())): ?>
+							<h4><a href="<?php echo $res->getLink(); ?>" target="_blank">
+							<?php echo $res->getTitle(); ?></a></h4>
+						<?php else: ?>
+							<h4><?php echo $res->getTitle(); ?></h4>
+							<p><?php echo $res->getLink(); ?></p>
+						<?php endif; ?>
+						<a href="<?php echo $state->getLocation()->getClone()
+								->setParam($state->getResourceSelect()->getParam('id')->getName(), $res->getId())
+								->setParam('focus', 'res')->getUrl(); ?>">edit</a>
+						<form method="POST" style="display: inline-block;">
+							<?php $delete = $state->getResourceDelete(); ?>
+							<input type="hidden"
+								name="<?php echo $delete->getParam('id')->getName(); ?>"
+								value="<?php echo $res->getId(); ?>">
+							<input type="submit" name="<?php echo $delete; ?>" value="Delete">
+						</form>
+						<ul>
+							<?php foreach ($res->getTags() as $tag): ?>
+								<li><?php echo getTagLinks($tag, true); ?></li>
+							<?php endforeach; ?>
+						</ul>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
 	</body>
 </html>
 <?php
