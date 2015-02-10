@@ -306,8 +306,13 @@ try {
 				->save();
 			break;
 		case $state->getResourceDelete():
-			$selectedRes = $state->getSelectedResource();
-			if ($selectedRes) $selectedRes->delete();
+			$id = $state->getResourceDelete()->getParam('id');
+			$id = (int)"$id";
+			if (empty($id))
+				$id = $state->getSelectedResource()->getId();
+			if (empty($id))
+				throw new Exception('Missing resource id');
+			$resCollection->find("$id")->delete();
 			break;
 		case $state->getTagAdd():
 			$name = $state->getTagAdd()->getParam('name');
@@ -356,7 +361,8 @@ try {
 		case $state->getTagDelete():
 			$id = $state->getTagDelete()->getParam('id');
 			$id = (int)"$id";
-			if (empty($id)) $id = $state->getSelectedTag()->getId();
+			if (empty($id))
+				$id = $state->getSelectedTag()->getId();
 			if (empty($id))
 				throw new Exception('Missing tag id');
 			$tagCollection->find("$id")->delete();
@@ -431,7 +437,7 @@ try {
 							event.preventDefault();
 					});
 				<?php endif; ?>
-					$('input[name="tag:delete"]').click(function(event) {
+					$('input[name="<?php echo $state->getTagDelete(); ?>"]').click(function(event) {
 						var id = $(this).parent().find('input[type="hidden"]').val();
 						var tag = '';
 						<?php if ($selectedTag): ?>
@@ -473,13 +479,20 @@ try {
 						if (message === '' || !answer)
 							event.preventDefault();
 					});
-					$('input[name="<?php echo $state->getResourceDelete(); ?>"]').click(function(event) {
-						answer = confirm('Deleting resource <?php
-								echo $selectedRes->getTitle(); ?>. Continue?');
-						if (!answer)
-							event.preventDefault();
-					});
 				<?php endif; ?>
+				$('input[name="<?php echo $state->getResourceDelete(); ?>"]').click(function(event) {
+					var id = $(this).parent().find('input[type="hidden"]').val();
+					var res = '';
+					<?php if ($selectedRes): ?>
+					if (parseInt(id) === <?php echo $selectedRes->getId(); ?>)
+						res = '<?php echo $selectedRes->getTitle(); ?>';
+					else
+					<?php endif; ?>
+						res = $(this).closest('li').find('h4 > a').text();
+					var answer = confirm('Deleting resource ' + res + '. Continue?');
+					if (!answer)
+						event.preventDefault();
+				});
 			});
 		</script>
 	</head>
@@ -609,6 +622,13 @@ try {
 					<a href="<?php echo $state->getLocation()->getClone()
 							->setParam($state->getResourceSelect()->getParam('id')->getName(), $res->getId())
 							->setParam('focus', 'res')->getUrl(); ?>">edit</a>
+					<form method="POST" style="display: inline-block;">
+						<?php $delete = $state->getResourceDelete(); ?>
+						<input type="hidden"
+							name="<?php echo $delete->getParam('id')->getName(); ?>"
+							value="<?php echo $res->getId(); ?>">
+						<input type="submit" name="<?php echo $delete; ?>" value="Delete">
+					</form>
 					<ul>
 						<?php foreach ($res->getTags() as $tag): ?>
 							<li><?php echo getTagLinks($tag, true); ?></li>
