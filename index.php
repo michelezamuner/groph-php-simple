@@ -16,7 +16,7 @@ function getTagLinks(Tag\Tag $tag, $parents = False) {
 		? $tag->getUniquePath()->implode(':')
 		: $tag->getName();
 	return <<<RET
-<a href="$tagLink">$name</a>
+<a href="$tagLink" class="name">$name</a>
 <a href="$editLink">edit</a>
 <a href="javascript:void(0)"
 	class="select-tag"
@@ -33,7 +33,7 @@ RET;
 function getTreeView(Array $roots, $ind) {
     $tree = '';
     foreach ($roots as $branch) {
-        $tree .= $ind.'<dl>'.PHP_EOL;
+        $tree .= $ind.'<dl class="tree">'.PHP_EOL;
 		$tree .= $ind.'  '.'<dt>'.getTagLinks($branch).'</dt>'.PHP_EOL;
         $tree .= $ind.'  '.'<dd>'.PHP_EOL;
         $tree .= getTreeView($branch->getChildren(), $ind.'  ');
@@ -449,7 +449,7 @@ try {
 							tag = '<?php echo $selectedTag->getName(); ?>';
 						else
 						<?php endif; ?>
-							tag = $(this).closest('dt').find('a:first-child').text();
+							tag = $(this).closest('dt').find('a.name').text();
 						var answer = confirm('Deleting tag ' + tag + '. Continue?');
 						if (!answer)
 							event.preventDefault();
@@ -519,6 +519,13 @@ try {
 						$inputToFill.val(currentVal + $(this).attr('path'));
 						$inputToFill.focus();
 					}
+				});
+				$('.tree dt').prepend('<a href="javascript:void(0)" class="switch closed" style="font-family: monospace;">+&nbsp;</a>');
+				$('.tree .switch.closed').parent().next().hide();
+				$('.tree .switch').click(function() {
+					$(this).text($(this).hasClass('closed') ? '- ' : '+ ');
+					$(this).toggleClass('closed');
+					$(this).parent().next().toggle();
 				});
 			});
 		</script>
@@ -624,9 +631,9 @@ try {
 				</fieldset>
 			</form>
 		<?php endif; ?>
-		<dl id="tree">
+		<!--<div id="tree">-->
 			<?php echo getTreeView($tagCollection->getRoots(), '      '); ?>
-		</dl>
+		<!--</div>-->
 		<?php
 		$name = '';
 		if (preg_match('/^tag:(\d+)$/', $state->getSearchQuery(), $matches)) {
