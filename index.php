@@ -16,7 +16,11 @@ function getTagLinks(Tag\Tag $tag, $parents = False) {
 		? $tag->getUniquePath()->implode(':')
 		: $tag->getName();
 	return <<<RET
-<a href="$tagLink">$name</a>&nbsp;<a href="$editLink">edit</a>
+<a href="$tagLink">$name</a>
+<a href="$editLink">edit</a>
+<a href="javascript:void(0)"
+	class="select-tag"
+	path="{$tag->getUniquePath()->implode(':')}">select</a>
 <form method="POST" style="display: inline-block;">
 	<input type="hidden"
 		name="{$state->getTagDelete()->getParam('id')->getName()}"
@@ -493,6 +497,29 @@ try {
 					if (!answer)
 						event.preventDefault();
 				});
+				/**
+				 * @var jQuery $inputToFill input element
+				 * that has to be filled with tag names
+				 * when using the "select" command
+				 */
+				var $inputToFill = undefined;
+				$('input').focusout(function() {
+					$fieldset = $(this).parent();
+					$inputToFill = $fieldset.length
+						? $fieldset.find('input[name="'
+								+ $fieldset.attr('input-to-fill')
+								+ '"]')
+						: undefined;
+				});
+				$('.select-tag').click(function(event) {
+					if ($inputToFill !== undefined) {
+						var currentVal = $inputToFill.val();
+						if (currentVal)
+							currentVal += ',';
+						$inputToFill.val(currentVal + $(this).attr('path'));
+						$inputToFill.focus();
+					}
+				});
 			});
 		</script>
 	</head>
@@ -516,10 +543,10 @@ try {
 			</fieldset>
 		</form>
 		<form id="resource:add" method="POST">
-			<fieldset>
+			<?php $add = $state->getResourceAdd(); ?>
+			<fieldset input-to-fill="<?php echo $add->getParam('tags')->getName(); ?>">
 				<legend>Add New Resource</legend>
 				<label>Link</label>
-				<?php $add = $state->getResourceAdd(); ?>
 				<?php $prefill = $state->getResourceAddPrefill(); ?>
 				<input type="text" name="<?php echo $add->getParam('link')->getName(); ?>"
 						value="<?php echo $prefill->getParam('link'); ?>">
@@ -537,7 +564,7 @@ try {
 			<?php $edit = $state->getResourceEdit(); ?>
 			<?php $delete = $state->getResourceDelete(); ?>
 			<form id="res:edit" method="POST">
-				<fieldset>
+				<fieldset input-to-fill="<?php echo $edit->getParam('tags')->getName(); ?>">
 					<legend>Edit Resource <?php echo $selectedRes->getTitle(); ?></legend>
 					<label>New Link:</label>
 					<input type="hidden"
@@ -564,7 +591,7 @@ try {
 		<?php endif; ?>
 		<form id="tag:add" method="POST">
 			<?php $add = $state->getTagAdd(); ?>
-			<fieldset>
+			<fieldset input-to-fill="<?php echo $add->getParam('parent')->getName(); ?>">
 				<legend>Add New Tag</legend>
 				<label>Name</label>
 				<input type="text" name="<?php echo $add->getParam('name')->getName(); ?>">
@@ -576,7 +603,7 @@ try {
 		<?php if ($selectedTag): ?>
 			<?php $edit = $state->getTagEdit(); ?>
 			<form id="tag:edit" method="POST">
-				<fieldset>
+				<fieldset input-to-fill="<?php echo $edit->getParam('parent')->getName(); ?>">
 					<legend>Edit Tag <?php echo $selectedTag->getName(); ?></legend>
 					<input type="hidden"
 						name="<?php echo $edit->getParam('id')->getName(); ?>"
