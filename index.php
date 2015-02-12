@@ -645,13 +645,14 @@ try {
 		<?php
 		$name = '';
 		if (preg_match('/^tag:(\d+)$/', $state->getSearchQuery(), $matches)) {
-			$name = $tagCollection->find($matches[1])->getUniquePath()->implode(':');
+			$tag = $tagCollection->find($matches[1]);
+			if ($tag) $name = $tag->getUniquePath()->implode(':');
 		} else {
 			$name = $state->getSearchQuery();
 		}
 		?>
 		<div id="resources">
-			<h3><?php echo $name; ?></h3>
+			<h3><?php echo $name ? $name.'(Results: '.count($searchResults).')':''; ?></h3>
 			<ul>
 				<?php foreach ($searchResults as $res): ?>
 					<li>
