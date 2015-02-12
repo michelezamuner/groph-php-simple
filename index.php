@@ -33,7 +33,11 @@ RET;
 function getTreeView(Array $roots, $ind) {
     $tree = '';
     foreach ($roots as $branch) {
-        $tree .= $ind.'<dl class="tree">'.PHP_EOL;
+    	$closed = true;
+    	if (isset($_SESSION['tree']) && isset($_SESSION['tree'][$branch->getId()])) {
+    		$closed = $_SESSION['tree'][$branch->getId()] === 'closed';
+    	}
+        $tree .= $ind.'<dl tag-id="'.$branch->getId().'" class="tree'.($closed ? ' closed' : '').'">'.PHP_EOL;
 		$tree .= $ind.'  '.'<dt>'.getTagLinks($branch).'</dt>'.PHP_EOL;
         $tree .= $ind.'  '.'<dd>'.PHP_EOL;
         $tree .= getTreeView($branch->getChildren(), $ind.'  ');
@@ -207,7 +211,6 @@ function export($file) {
 	global $tagCollection, $resCollection;
 	$tags = array();
 	foreach ($tagCollection->findLike(array('')) as $tag) {
-		echo "Tag: $tag, parent: ".$tag->getParent().'<br>';
 		$parentPath = $tag->getParent()
 			? $tag->getParent()->getUniquePath()->implode(':')
 			: '';
@@ -371,6 +374,20 @@ try {
 				throw new Exception('Missing tag id');
 			$tagCollection->find("$id")->delete();
 			break;
+		case $state->getTreeOpen():
+			$id = $state->getTreeOpen()->getParam('id');
+			if(!isset($_SESSION['tree']))
+				$_SESSION['tree'] = Array();
+			$_SESSION['tree']["$id"] = 'opened';
+			exit;
+			break;
+		case $state->getTreeClose():
+			$id = $state->getTreeClose()->getParam('id');
+			if(!isset($_SESSION['tree']))
+				$_SESSION['tree'] = Array();
+			$_SESSION['tree']["$id"] = 'closed';
+			exit;
+			break;
 		default:
 			break;
 	}
@@ -387,6 +404,8 @@ try {
 		<title>Groph</title>
 		<meta charset="utf-8">
 		<style>
+		dl.tree.closed > dd { display: none; }
+		dl.tree > dt > a:first-child { font-family: monospace; }
 		@media (min-width: 768px) {
 			#tree { width: 30%; float: left; }
 			#resources { width: 65%; float: right; }
@@ -526,12 +545,38 @@ try {
 						$inputToFill.focus();
 					}
 				});
-				$('.tree dt').prepend('<a href="javascript:void(0)" class="switch closed" style="font-family: monospace;">+&nbsp;</a>');
-				$('.tree .switch.closed').parent().next().hide();
+				$('.tree dt').each(function() {
+					var closed = $(this).parent().hasClass('closed');
+					var switchClass = 'switch' + (closed ? ' closed' : '');
+					var switchSym = closed ? '+' : '-';
+					$(this).prepend('<a href="javascript:void(0)" class="'
+							+ switchClass + '">' + switchSym + '&nbsp;</a>');
+				});
 				$('.tree .switch').click(function() {
-					$(this).text($(this).hasClass('closed') ? '- ' : '+ ');
-					$(this).toggleClass('closed');
-					$(this).parent().next().toggle();
+					var $container = $(this).closest('dl');
+					var id = $container.attr('tag-id');
+					var data = {};
+					if ($container.hasClass('closed')) {
+						data = {
+							'tree:open': '',
+							'tree:open:id': id
+						};
+					} else {
+						data = {
+							'tree:close': '',
+							'tree:close:id': id
+						};
+					}
+					$(this).text($container.hasClass('closed') ? '-\xA0' : '+\xA0');
+					$container.toggleClass('closed');
+					$.post('<?php echo $state->getLocation()->getUrl(); ?>',
+						data
+						, function(data) {
+							console.log(data);
+						})
+						.fail(function() {
+							console.dir(arguments);
+					});
 				});
 			});
 		</script>

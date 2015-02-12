@@ -155,38 +155,6 @@ class Collection extends ModelCollection
 		return $this->getSelect($columns, $table, $where);
 	}
 	
-	/*public function indexParent(Tag $child, Tag $parent)
-	{
-		echo "Adding parent $parent to tag $child\n";
-		$this->parentsIndex[$child->getId()] = $parent->getId();
-		var_dump($this->parentsIndex);
-// 		if (!isset($this->parentsIndex[$child->getId()]))
-// 			$this->parentsIndex[$child->getId()] = array($parent->getId());
-// 		else if (!in_array($parent->getId(), $this->parentsIndex[$child->getId()]))
-// 			$this->parentsIndex[$child->getId()][] = $parent->getId();
-	}
-	
-	public function unIndexParent(Tag $child, Tag $parent)
-	{
-		unset($this->parentsIndex[$child->getId()]);
-// 		$index = array_search($parent->getId(), $this->parentsIndex[$child->getId()]);
-// 		unset($this->parentsIndex[$child->getId()][$index]);
-	}
-	
-	public function getIndexParents(Tag $child)
-	{
-		return isset($this->parentsIndex[$child->getId()])
-			? $this->find($this->parentsIndex[$child->getId()])
-			: Null;
-// 		if (!$child->getId()) return array();
-// 		$self = $this;
-// 		return isset($this->parentsIndex[$child->getId()])
-// 			? array_map(function($id) use ($self) {
-// 				return $self->find($id);
-// 			}, $this->parentsIndex[$child->getId()])
-// 			: array();
-	}*/
-	
 	public function createPathsFromString($string, Vector& $leaves)
 	{
 		$roots = Vector::create();

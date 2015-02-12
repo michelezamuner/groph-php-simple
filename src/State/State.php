@@ -26,6 +26,9 @@ class State
 			TagCollection $tagCollection,
 			ResCollection $resCollection)
 	{
+		if (session_id() == '')
+			session_start();
+		
 		$this->tagCollection = $tagCollection;
 		$this->resCollection = $resCollection;
 		$this->location = new Location();
@@ -52,6 +55,10 @@ class State
 		$this->addAction(Post::create('tag:edit',
 				Array('id', 'name', 'parent')));
 		$this->addAction(Post::create('tag:delete',
+				Array('id')));
+		$this->addAction(Post::create('tree:open',
+				Array('id')));
+		$this->addAction(Post::create('tree:close',
 				Array('id')));
 	}
 	
@@ -138,6 +145,16 @@ class State
 	public function getTagDelete()
 	{
 		return $this->actions['tag:delete'];
+	}
+	
+	public function getTreeOpen()
+	{
+		return $this->actions['tree:open'];
+	}
+	
+	public function getTreeClose()
+	{
+		return $this->actions['tree:close'];
 	}
 	
 	public function getPost()

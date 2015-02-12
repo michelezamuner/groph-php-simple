@@ -29,6 +29,8 @@ class Param
 	
 	public function getValue()
 	{
-		return urldecode($this->value);
+		return is_string($this->value)
+			? urldecode($this->value)
+			: $this->value;
 	}
 }
