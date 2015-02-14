@@ -1,6 +1,8 @@
 <?php
 namespace State\Action;
 
+use Exception;
+
 class Param
 {
 	public static function create($name, $value)

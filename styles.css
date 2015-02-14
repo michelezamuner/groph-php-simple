@@ -1,0 +1,12 @@
+@CHARSET "UTF-8";
+.tree.closed > dd { display: none; }
+.tree > dt > a:first-child { font-family: monospace; }
+.hints {
+	display: none;
+	position: absolute;
+	left: 0;
+}
+@media (min-width: 768px) {
+	#tree { width: 30%; float: left; }
+	#resouces { width: 65%; float: right; }
+}

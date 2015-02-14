@@ -296,10 +296,18 @@ try {
 		case $state->getResourceAdd():
 			$add = $state->getResourceAdd();
 			$tags = Vector::create();
+			$title = trim((string)$add->getParam('title'));
+			if (empty($title))
+				throw new Exception('Missing title');
+			$link = trim((string)$add->getParam('link'));
+			if (empty($link))
+				throw new Exception('Missing link');
+			$tagsGroups = trim((string)$add->getParam('tags'));
+			if (empty($tagsGroups))
+				throw new Exception('Missing tags');
 			$tagCollection->createPathsFromString(
-					(string)$add->getParam('tags'), $tags);
-			$resCollection->add(array($add->getParam('link'),
-					(string)$add->getParam('title'), (array)$tags));
+					$tagsGroups, $tags);
+			$resCollection->add(array($link, $title, (array)$tags));
 			break;
 		case $state->getResourceEdit():
 			$edit = $state->getResourceEdit();
@@ -322,10 +330,15 @@ try {
 			$resCollection->find("$id")->delete();
 			break;
 		case $state->getTagAdd():
-			$name = $state->getTagAdd()->getParam('name');
-			$parent = $state->getTagAdd()->getParam('parent');
-			$path = $tagCollection->parseTagsGroup("$parent")
-				->unshift("$name");
+			$add = $state->getTagAdd();
+			$name = trim((string)$add->getParam('name'));
+			if (empty($name))
+				throw new Exception('Empty name');
+			$parent = trim((string)$add->getParam('parent'));
+			if (empty($parent))
+				throw new Exception('Empty parent');
+			$path = $tagCollection->parseTagsGroup($parent)
+				->unshift($name);
 			$tagCollection->createPath($path->reverse());
 			break;
 		case $state->getTagEdit():
@@ -403,14 +416,7 @@ try {
 	<head>
 		<title>Groph</title>
 		<meta charset="utf-8">
-		<style>
-		dl.tree.closed > dd { display: none; }
-		dl.tree > dt > a:first-child { font-family: monospace; }
-		@media (min-width: 768px) {
-			#tree { width: 30%; float: left; }
-			#resources { width: 65%; float: right; }
-		}
-		</style>
+		<link rel="stylesheet" href="styles.css">
 		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 		<script>
 			$(function() {
@@ -578,6 +584,130 @@ try {
 							console.dir(arguments);
 					});
 				});
+
+				var tagsNames = {};
+				function findTree($branch, branch, branchRoot) {
+					var name = $branch.find('> dt > a.name').text()/*.toLowerCase()*/;
+					if (!branch) {
+						if (tagsNames.noColon === undefined)
+							tagsNames.noColon = [];
+						if (tagsNames.noColon.indexOf(name) == -1)
+							tagsNames.noColon.push(name);
+					} else {
+						branch.push(branchRoot + ':' + name);
+					}
+					
+					var $parent = $branch.parents('dl').first();
+					if ($parent.length) {
+						if (!branch) {
+							var lname = name.toLowerCase();
+							if (tagsNames[lname] === undefined)
+								tagsNames[lname] = [];
+							branch = tagsNames[lname];
+							findTree($parent, branch, name);
+						} else {
+							findTree($parent, branch, branchRoot + ':' + name);
+						}
+					}
+				}
+				$('.tree').each(function() {
+					findTree($(this));
+				});
+				
+				function findStringInTree(string) {
+					var results = [];
+					if (string.indexOf(':') == -1) {
+						for (var i in tagsNames.noColon) {
+							var tagName = tagsNames.noColon[i];
+							if (tagName.toLowerCase().indexOf(string) === 0)
+								results.push(tagName);
+						}
+					} else {
+						var split = string.split(':');
+						var first = split[0];
+						if (tagsNames[first] !== undefined) {
+							var branch = tagsNames[first];
+							for (var i in branch) {
+								var tagName = branch[i];
+								if (tagName.toLowerCase().indexOf(string) === 0
+										&& tagName.split(':').length == split.length)
+									results.push(tagName);
+							}
+						}
+					}
+					return results;
+				}
+				
+				$('fieldset').each(function() {
+					var tagBoxName = $(this).attr('input-to-fill');
+					var $tagBox = $('input[name="' + tagBoxName + '"]');
+					var $container = $('<span/>');
+					$container.css({ 'position': 'relative' });
+					$tagBox.wrap($container);
+					var $hints = $('<select class="hints"></select>');
+					$hints.css({
+						'top': $tagBox.height() + 'px',
+						'width': $tagBox.width() + 'px'
+					});
+					$hints.keydown(function(e) {
+						if (e.keyCode == 32 || e.keyCode == 9) {
+							e.preventDefault();
+							var groups = $tagBox.val().split(',');
+							groups[groups.length - 1] = $(this).children(':selected').html();
+							$tagBox.val(groups.join());
+							$(this).hide();
+							$tagBox.focus();
+						} else if (e.keyCode == 38 && $(this).find('option:first-child').is(':selected')) {
+							$tagBox.focus();
+						}
+					});
+					$tagBox.after($hints);
+					// 8: backspace
+					// 9: tab
+					// 13: return
+					// 16: shift
+					// 17: ctrl
+					// 32: space
+					// 38: up
+					// 40: down
+					// 188: ,
+					// 190: :
+					$tagBox.bind('input', function(e) {
+						var groups = $(this).val().split(',');
+						var string = groups.length ? groups[groups.length - 1] : '';
+						if (string != '') {
+							var hintsHtml = '';
+							var tagsFound = findStringInTree(string.toLowerCase());
+							if (tagsFound.length > 0) {
+								for (i in tagsFound) {
+									hintsHtml += '<option>' + tagsFound[i] + '</option>';
+								}
+								$hints.html(hintsHtml);
+								$hints.attr('size',tagsFound.length > 1 ? tagsFound.length : 2);
+								$hints.find('option:first-child').attr('selected', 'selected');
+								$hints.show();
+							} else {
+								$hints.hide();
+							}
+						} else {
+							$hints.hide();
+						}
+					});
+					$tagBox.keydown(function(e) {
+						if (e.keyCode == 40) {
+							$hints.find('option:first-child').attr('selected', 'selected');
+							$hints.focus();
+						} else if (e.keyCode == 188) {
+							$hints.hide();
+						} else if (e.keyCode == 9) {
+							e.preventDefault();
+							var groups = $(this).val().split(',');
+							groups[groups.length - 1] = $hints.children(':selected').html();
+							$(this).val(groups.join());
+							$hints.hide();
+						}
+					});
+				});
 			});
 		</script>
 	</head>
@@ -613,10 +743,13 @@ try {
 				<label>Title</label>
 				<input type="text" name="<?php echo $add->getParam('title')->getName(); ?>"
 						value="<?php echo $prefill->getParam('title'); ?>">
-				<label >Tags</label>
-				<input type="text" name="<?php echo $add->getParam('tags')->getName(); ?>"
-					<?php if ($state->getResourceAddPrefill()->getIsSet()): ?>
-					autofocus<?php endif; ?>>
+					<label >Tags</label>
+				<span>
+					<input type="text" name="<?php echo $add->getParam('tags')->getName(); ?>"
+						<?php if ($state->getResourceAddPrefill()->getIsSet()): ?>
+						autofocus<?php endif; ?>
+						autocomplete="off">
+				</span>
 				<input type="submit" name="<?php echo $add; ?>" value="Add Resource">
 			</fieldset>
 		</form>
