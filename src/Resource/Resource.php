@@ -44,8 +44,8 @@ class Resource extends Model
 		foreach ($this->getTags() as $tag) {
 			if (!$this->db->exists($relationsTable,
 					"tag = {$tag->getId()} AND resource = $this->id")) {
-					$this->db->insert($relationsTable,
-							array('tag' => $tag->getId(), 'resource' => $this->id));
+				$this->db->insert($relationsTable,
+					array('tag' => $tag->getId(), 'resource' => $this->id));
 			}
 
 		}
@@ -58,7 +58,7 @@ class Resource extends Model
 		$results = $this->db->select('tag', $relationsTable, "resource = $this->id");
 		foreach ($results as $result) {
 			if (!in_array($result['tag'], $tagsIds)) {
-				$this->db->exec('DELETE FROM '.$relationsTable.' WHERE tag = '.$result['tag']);
+				$this->db->exec('DELETE FROM '.$relationsTable.' WHERE tag = '.$result['tag'] . " AND resource = $this->id");
 			}
 		}
 		
