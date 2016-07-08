@@ -10,10 +10,10 @@ class Vector extends ArrayObject
 	
 	public static function explode($delimiter, $string)
 	{
+		$string = strval($string);
 		return empty($string)
 			? new self()
 			: new self(explode($delimiter, $string));
-// 		return new self(explode($delimiter, $string));
 	}
 	
 	public function get($index)
