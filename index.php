@@ -579,7 +579,8 @@ try {
 					var $hints = $('<select class="hints"></select>');
 					$hints.css({
 						'top': $tagBox.height() + 'px',
-						'width': $tagBox.width() + 'px'
+						'width': $tagBox.width() + 'px',
+						'z-index': 999
 					});
 					$hints.keydown(function(e) {
 						if (e.keyCode == 32 || e.keyCode == 9) {
