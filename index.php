@@ -709,7 +709,8 @@ try {
 					<input type="text"
 						name="<?php echo $edit->getParam('tags')->getName(); ?>"
 						value="<?php echo $selectedRes->getTags()->map(function(Tag\Tag $tag) {
-							return $tag->getUniquePath()->implode(':'); })->implode(', '); ?>">
+							return $tag->getUniquePath()->implode(':'); })->implode(', '); ?>"
+						autocomplete="off">
 					<input type="submit" name="<?php echo $edit; ?>" value="Edit Resource">
 					<input type="submit" name="<?php echo $delete; ?>" value="Delete Resource">
 				</fieldset>
@@ -722,7 +723,10 @@ try {
 				<label>Name</label>
 				<input type="text" name="<?php echo $add->getParam('name')->getName(); ?>">
 				<label>Parent</label>
-				<input type="text" name="<?php echo $add->getParam('parent')->getName(); ?>">
+				<input
+					type="text"
+					name="<?php echo $add->getParam('parent')->getName(); ?>"
+					autocomplete="off">
 				<input type="submit" name="<?php echo $add; ?>" value="Add Tag">
 			</fieldset>
 		</form>
@@ -744,7 +748,8 @@ try {
 					<input type="text"
 						name="<?php echo $edit->getParam('parent')->getName(); ?>"
 						value="<?php echo $selectedTag->getParent() ?
-							$selectedTag->getParent()->getUniquePath()->implode(':') : ''; ?>">
+							$selectedTag->getParent()->getUniquePath()->implode(':') : ''; ?>"
+						autocomplete="off">
 					<input type="submit" name="<?php echo $edit; ?>" value="Edit Tag">
 					<input type="submit" name="tag:delete" value="Delete Tag">
 				</fieldset>
