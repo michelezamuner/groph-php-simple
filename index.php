@@ -644,7 +644,7 @@ try {
 		</script>
 	</head>
 	<body>
-		<?php $quickLinkUrl = 'javascript:(function()%7Bvar%20a%3Dwindow,b%3Ddocument,c%3DencodeURIComponent,d%3Da.open("http://'.$_SERVER['HTTP_HOST'].$state->getLocation()->getPath().'%3Fresource%3Aadd%3Aprefill%3Alink%3D"%2Bc(b.location)%2B"%26resource%3Aadd%3Aprefill%3Atitle%3D"%2Bc(b.title),"groph_popup","left%3D"%2B((a.screenX%7C%7Ca.screenLeft)%2B10)%2B",top%3D"%2B((a.screenY%7C%7Ca.screenTop)%2B10)%2B",height%3D420px,width%3D550px,resizable%3D1,alwaysRaised%3D1,scrollbars%3D1")%3Ba.setTimeout(function()%7Bd.focus()%7D,300)%7D)()%3B'; ?>
+		<?php $quickLinkUrl = 'javascript:(function()%7Bvar%20a%3Dwindow,b%3Ddocument,c%3DencodeURIComponent,d%3Da.open("http://'.$_SERVER['HTTP_HOST'].$state->getLocation()->getPath().'%3Fresource%3Aadd%3Aprefill%3Alink%3D"%2Bc(b.location)%2B"%26resource%3Aadd%3Aprefill%3Atitle%3D"%2Bc(b.title.replace(/%27/g, "%26%2339")),"groph_popup","left%3D"%2B((a.screenX%7C%7Ca.screenLeft)%2B10)%2B",top%3D"%2B((a.screenY%7C%7Ca.screenTop)%2B10)%2B",height%3D420px,width%3D550px,resizable%3D1,alwaysRaised%3D1,scrollbars%3D1")%3Ba.setTimeout(function()%7Bd.focus()%7D,300)%7D)()%3B'; ?>
 		<label>Quick link url: <input type="text" readonly="readonly" value='<?php echo $quickLinkUrl; ?>'></label>
 		<form id="manage" method="POST" enctype="multipart/form-data">
 			<input type="submit" name="<?php echo $state->getExport(); ?>" value="Export">
