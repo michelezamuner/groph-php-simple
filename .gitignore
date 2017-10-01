@@ -1,6 +1,3 @@
 /groph.json
-/configuration.php
 /tests/_output/*
 !/.openshift/
-*.sqlite
-*.log

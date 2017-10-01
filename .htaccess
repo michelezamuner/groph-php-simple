@@ -1,4 +1,4 @@
 AuthType Basic
 AuthName "Sloth Company Groph"
-AuthUserFile /vagrant/.htpasswd
+AuthUserFile /usr/share/data/groph/.htpasswd
 Require valid-user
